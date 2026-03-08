@@ -33,7 +33,7 @@ const Checkout = () => {
     fullName: "", phone: "", address: "", city: "", state: "", pincode: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [paymentMethod, setPaymentMethod] = useState("upi");
+  
 
   if (items.length === 0) {
     return (
