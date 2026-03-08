@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogOut, Package, Clock, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -141,7 +141,8 @@ const Profile = () => {
               ) : (
                 <div className="space-y-4">
                   {orders.map((order) => (
-                    <div key={order.id} className="rounded-lg border bg-card p-5">
+                    <Link to={`/order/${order.order_id}`} key={order.id} className="block">
+                    <div className="rounded-lg border bg-card p-5 transition-colors hover:border-primary/40 hover:bg-accent/30">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
                           <p className="font-mono text-sm font-bold text-foreground">{order.order_id}</p>
@@ -159,11 +160,15 @@ const Profile = () => {
                           <p className="mt-1 text-lg font-bold text-primary">{formatPrice(order.total)}</p>
                         </div>
                       </div>
-                      <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
-                        <MapPin className="h-3 w-3" />
-                        {order.shipping_city}, {order.shipping_state}
+                      <div className="mt-3 flex items-center justify-between">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3" />
+                          {order.shipping_city}, {order.shipping_state}
+                        </div>
+                        <span className="text-xs font-medium text-primary">Track Order →</span>
                       </div>
                     </div>
+                    </Link>
                   ))}
                 </div>
               )}
