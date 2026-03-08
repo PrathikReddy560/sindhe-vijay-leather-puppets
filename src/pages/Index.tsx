@@ -23,7 +23,7 @@ const Index = () => {
         <div className="container relative z-10 py-20">
           <motion.div initial="hidden" animate="visible" className="mx-auto max-w-3xl text-center">
             <motion.p variants={fadeUp} custom={0} className="text-sm font-medium uppercase tracking-[0.3em] text-primary">
-              8th Generation · Nimmalakunta
+              Jeekavandlapalli · Karnataka
             </motion.p>
             <motion.h1 variants={fadeUp} custom={1} className="mt-4 font-serif text-4xl font-bold leading-tight text-foreground md:text-6xl lg:text-7xl">
               The Dance of<br />
@@ -31,7 +31,7 @@ const Index = () => {
             </motion.h1>
             <motion.p variants={fadeUp} custom={2} className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
               Handcrafted leather shadow puppets and luminous art from the ancient tradition of
-              Tholu Bommalata — where goat hide transforms into stories that dance with light.
+              Thogalu Gombe — where goat hide transforms into stories that dance with light.
             </motion.p>
             <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <Button size="lg" asChild>

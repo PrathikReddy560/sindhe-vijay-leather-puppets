@@ -7,8 +7,8 @@ const Footer = () => (
         <div className="md:col-span-2">
           <h3 className="font-serif text-xl font-bold text-foreground">Sindhe Vijay Leather Puppets</h3>
           <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-            Preserving the ancient art of Tholu Bommalata — handcrafted leather shadow puppetry
-            from Nimmalakunta, Andhra Pradesh. An 8th-generation legacy of art, culture, and storytelling.
+            Preserving the ancient art of Thogalu Gombe — traditional handcrafted leather shadow puppetry
+            from Jeekavandlapalli, Karnataka. A legacy of art, culture, and storytelling.
           </p>
         </div>
         <div>
@@ -28,17 +28,17 @@ const Footer = () => (
         <div>
           <h4 className="font-serif text-sm font-semibold text-foreground">Contact</h4>
           <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
-            <span>Nimmalakunta Village</span>
-            <span>Dharmavaram, Anantapur</span>
-            <span>Andhra Pradesh, India</span>
-            <a href="mailto:info@sindhevijay.com" className="transition-colors hover:text-primary">
-              info@sindhevijay.com
+            <span>Jeekavandlapalli Village</span>
+            <span>Bagepalli, Chikkabalapur</span>
+            <span>Karnataka 561207, India</span>
+            <a href="mailto:sindhevijayleatherpuppets@gmail.com" className="transition-colors hover:text-primary">
+              sindhevijayleatherpuppets@gmail.com
             </a>
           </div>
         </div>
       </div>
       <div className="mt-10 border-t pt-6 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Sindhe Vijay Leather Puppets. All rights reserved. Handmade with ❤️ in Nimmalakunta.
+        © {new Date().getFullYear()} Sindhe Vijay Leather Puppets. All rights reserved. Handmade with ❤️ in Jeekavandlapalli.
       </div>
     </div>
   </footer>
