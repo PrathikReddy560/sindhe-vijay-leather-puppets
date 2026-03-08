@@ -66,7 +66,8 @@ export const useFeaturedProducts = () => {
 
 // Helper to convert DB product to the format used by ProductCard
 export const toDisplayProduct = (p: DbProduct) => ({
-  id: p.slug,
+  id: p.id,
+  slug: p.slug,
   name: p.name,
   description: p.description,
   longDescription: p.long_description,
