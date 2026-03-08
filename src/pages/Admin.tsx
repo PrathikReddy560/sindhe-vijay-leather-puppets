@@ -100,11 +100,11 @@ const Admin = () => {
     );
   };
 
-  const sendEmailNotification = async (order: any, newStatus: string, customerEmail: string) => {
+  const sendEmailNotification = async (order: any, newStatus: string) => {
     try {
       const { error } = await supabase.functions.invoke("send-order-notification", {
         body: {
-          customerEmail,
+          userId: order.user_id,
           customerName: order.shipping_name,
           orderId: order.order_id,
           newStatus,
@@ -139,37 +139,16 @@ const Admin = () => {
     setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
     setUpdatingOrderId(null);
 
-    // Fetch customer email from profiles
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", order.user_id)
-      .maybeSingle();
-
-    // Fetch user email from auth (via order user_id lookup through supabase)
-    // We'll use the profile or ask admin to use WhatsApp
-    const phone = order.shipping_phone?.replace(/\D/g, "");
-
     // Open WhatsApp with pre-filled message
+    const phone = order.shipping_phone?.replace(/\D/g, "");
     if (phone) {
       const waPhone = phone.startsWith("91") ? phone : `91${phone}`;
       const waUrl = `https://wa.me/${waPhone}?text=${getWhatsAppMessage(order, newStatus)}`;
       window.open(waUrl, "_blank");
     }
 
-    // Send email notification if we can find the email
-    // We need to get the user's email - fetch from auth via an edge function or profile
-    // For now, let's try to get it from the user's auth record via a simple approach
-    const { data: authData } = await supabase.auth.admin?.getUserById?.(order.user_id) || { data: null };
-    const customerEmail = authData?.user?.email;
-    
-    if (customerEmail) {
-      sendEmailNotification(order, newStatus, customerEmail);
-    } else {
-      // Fallback: we can't access auth.users from client, so let's use edge function
-      // For now show a toast that email couldn't be sent
-      toast({ title: "Email skipped", description: "Customer email not available from profile", variant: "destructive" });
-    }
+    // Send email notification via edge function
+    sendEmailNotification(order, newStatus);
   };
 
   const filteredOrders = orderFilter === "all"

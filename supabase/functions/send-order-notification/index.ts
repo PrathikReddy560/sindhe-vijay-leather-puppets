@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,15 +21,30 @@ serve(async (req) => {
 
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    if (!RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY is not configured");
+    if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
+
+    const { userId, customerName, orderId, newStatus, orderTotal, items } = await req.json();
+
+    if (!userId || !orderId || !newStatus) {
+      throw new Error("Missing required fields: userId, orderId, newStatus");
     }
 
-    const { customerEmail, customerName, orderId, newStatus, orderTotal, items } = await req.json();
+    // Look up user email server-side using service role
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-    if (!customerEmail || !orderId || !newStatus) {
-      throw new Error("Missing required fields: customerEmail, orderId, newStatus");
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (userError || !userData?.user?.email) {
+      console.error("Could not find user email:", userError);
+      return new Response(JSON.stringify({ error: "Customer email not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+
+    const customerEmail = userData.user.email;
 
     const statusEmoji: Record<string, string> = {
       pending: "⏳", confirmed: "✅", shipped: "🚚", delivered: "📦", cancelled: "❌",
