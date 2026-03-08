@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, ShieldCheck } from "lucide-react";
+import { ArrowLeft, MessageCircle, ShieldCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 const shippingSchema = z.object({
@@ -26,14 +27,15 @@ const formatPrice = (p: number) =>
 
 const Checkout = () => {
   const { items, totalPrice, clearCart } = useCart();
+  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [placingOrder, setPlacingOrder] = useState(false);
   const [shipping, setShipping] = useState<ShippingData>({
     fullName: "", phone: "", address: "", city: "", state: "", pincode: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
 
   if (items.length === 0) {
     return (
@@ -63,10 +65,56 @@ const Checkout = () => {
     return true;
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
+    if (placingOrder) return;
+    setPlacingOrder(true);
     const orderId = `SVL-${Date.now().toString(36).toUpperCase()}`;
-    clearCart();
-    navigate(`/thank-you?orderId=${orderId}`);
+
+    try {
+      if (user) {
+        // Save order to database
+        const { data: order, error: orderError } = await supabase
+          .from("orders")
+          .insert({
+            user_id: user.id,
+            order_id: orderId,
+            payment_method: "qr_upi",
+            subtotal: totalPrice,
+            shipping_cost: shippingCost,
+            total: grandTotal,
+            shipping_name: shipping.fullName,
+            shipping_phone: shipping.phone,
+            shipping_address: shipping.address,
+            shipping_city: shipping.city,
+            shipping_state: shipping.state,
+            shipping_pincode: shipping.pincode,
+          })
+          .select("id")
+          .single();
+
+        if (orderError) throw orderError;
+
+        // Save order items
+        const orderItems = items.map(({ product, quantity }) => ({
+          order_id: order.id,
+          product_id: product.id,
+          product_name: product.name,
+          product_image: product.images.day,
+          quantity,
+          price: product.price,
+        }));
+
+        const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
+        if (itemsError) throw itemsError;
+      }
+
+      clearCart();
+      navigate(`/thank-you?orderId=${orderId}`);
+    } catch (err: any) {
+      toast({ title: "Error placing order", description: err.message, variant: "destructive" });
+    } finally {
+      setPlacingOrder(false);
+    }
   };
 
   const shippingCost = totalPrice >= 5000 ? 0 : 200;
