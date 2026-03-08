@@ -41,7 +41,7 @@ const Contact = () => {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const whatsappUrl = `https://wa.me/919876543210?text=${encodeURIComponent("Hello! I'm interested in custom leather puppet work.")}`;
+  const whatsappUrl = `https://wa.me/919113599830?text=${encodeURIComponent("Hello! I'm interested in custom leather puppet work.")}`;
 
   return (
     <div className="py-12">
@@ -119,15 +119,15 @@ const Contact = () => {
               <h3 className="font-serif text-lg font-semibold text-foreground">Visit Our Workshop</h3>
               <div className="flex gap-3 text-sm text-muted-foreground">
                 <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
-                <span>Nimmalakunta Village, Dharmavaram,<br />Anantapur, Andhra Pradesh 515672</span>
+                <span>Jeekavandlapalli Village, Thimmampalli Post,<br />Gulur Hobli, Bagepalli Taluk,<br />Chikkabalapur District, Karnataka 561207</span>
               </div>
               <div className="flex gap-3 text-sm text-muted-foreground">
                 <Phone className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
-                <span>+91 98765 43210</span>
+                <span>+91 91135 99830</span>
               </div>
               <div className="flex gap-3 text-sm text-muted-foreground">
                 <Mail className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
-                <span>info@sindhevijay.com</span>
+                <span>sindhevijayleatherpuppets@gmail.com</span>
               </div>
             </div>
           </motion.div>
