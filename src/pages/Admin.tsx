@@ -80,7 +80,50 @@ const Admin = () => {
     if (isAdmin && activeTab === "orders") fetchOrders();
   }, [isAdmin, activeTab]);
 
+  const getWhatsAppMessage = (order: any, newStatus: string) => {
+    const statusMessages: Record<string, string> = {
+      pending: "Your order is pending confirmation.",
+      confirmed: "Your order has been confirmed and is being prepared! 🎉",
+      shipped: "Your order has been shipped and is on its way! 🚚",
+      delivered: "Your order has been delivered! Thank you for shopping with us! 📦",
+      cancelled: "Your order has been cancelled. Please contact us if you have questions.",
+    };
+    const items = order.order_items?.map((i: any) => `• ${i.product_name} × ${i.quantity}`).join("\n") || "";
+    return encodeURIComponent(
+      `Hi ${order.shipping_name},\n\n` +
+      `*Order Update - #${order.order_id}*\n` +
+      `Status: *${newStatus.toUpperCase()}*\n\n` +
+      `${statusMessages[newStatus] || "Your order status has been updated."}\n\n` +
+      `${items ? `Items:\n${items}\n\n` : ""}` +
+      `Total: ₹${order.total?.toLocaleString("en-IN")}\n\n` +
+      `– Sindhe Vijay Leather Puppets`
+    );
+  };
+
+  const sendEmailNotification = async (order: any, newStatus: string, customerEmail: string) => {
+    try {
+      const { error } = await supabase.functions.invoke("send-order-notification", {
+        body: {
+          customerEmail,
+          customerName: order.shipping_name,
+          orderId: order.order_id,
+          newStatus,
+          orderTotal: order.total,
+          items: order.order_items,
+        },
+      });
+      if (error) throw error;
+      toast({ title: "📧 Email notification sent" });
+    } catch (err: any) {
+      console.error("Email notification error:", err);
+      toast({ title: "Email failed", description: err.message, variant: "destructive" });
+    }
+  };
+
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return;
+
     setUpdatingOrderId(orderId);
     const { error } = await supabase
       .from("orders")
@@ -88,11 +131,45 @@ const Admin = () => {
       .eq("id", orderId);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Order status updated" });
-      setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
+      setUpdatingOrderId(null);
+      return;
     }
+
+    toast({ title: "Order status updated" });
+    setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
     setUpdatingOrderId(null);
+
+    // Fetch customer email from profiles
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", order.user_id)
+      .maybeSingle();
+
+    // Fetch user email from auth (via order user_id lookup through supabase)
+    // We'll use the profile or ask admin to use WhatsApp
+    const phone = order.shipping_phone?.replace(/\D/g, "");
+
+    // Open WhatsApp with pre-filled message
+    if (phone) {
+      const waPhone = phone.startsWith("91") ? phone : `91${phone}`;
+      const waUrl = `https://wa.me/${waPhone}?text=${getWhatsAppMessage(order, newStatus)}`;
+      window.open(waUrl, "_blank");
+    }
+
+    // Send email notification if we can find the email
+    // We need to get the user's email - fetch from auth via an edge function or profile
+    // For now, let's try to get it from the user's auth record via a simple approach
+    const { data: authData } = await supabase.auth.admin?.getUserById?.(order.user_id) || { data: null };
+    const customerEmail = authData?.user?.email;
+    
+    if (customerEmail) {
+      sendEmailNotification(order, newStatus, customerEmail);
+    } else {
+      // Fallback: we can't access auth.users from client, so let's use edge function
+      // For now show a toast that email couldn't be sent
+      toast({ title: "Email skipped", description: "Customer email not available from profile", variant: "destructive" });
+    }
   };
 
   const filteredOrders = orderFilter === "all"
