@@ -1,11 +1,11 @@
 import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Sun, Moon, Shield, Award, ShoppingBag, ArrowLeft } from "lucide-react";
+import { Sun, Moon, Shield, Award, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { getProductById, getProductsByCategory, Product } from "@/data/products";
+import { useProduct, useProducts, toDisplayProduct } from "@/hooks/useProducts";
 import ProductCard from "@/components/ProductCard";
 import { useCart } from "@/context/CartContext";
 
@@ -20,11 +20,20 @@ const formatPrice = (p: number) =>
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const product = getProductById(id || "");
+  const { data: dbProduct, isLoading } = useProduct(id || "");
+  const { data: allProducts } = useProducts();
   const [isNight, setIsNight] = useState(false);
   const { addItem } = useCart();
 
-  if (!product) {
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!dbProduct) {
     return (
       <div className="container flex min-h-[60vh] flex-col items-center justify-center gap-4">
         <h1 className="font-serif text-2xl font-bold">Product Not Found</h1>
@@ -35,10 +44,12 @@ const ProductDetail = () => {
     );
   }
 
+  const product = toDisplayProduct(dbProduct);
   const tag = inventoryLabels[product.inventoryTag];
-  const related = getProductsByCategory(product.category)
-    .filter((p) => p.id !== product.id)
-    .slice(0, 4);
+  const related = allProducts
+    ?.filter((p) => p.category === dbProduct.category && p.slug !== dbProduct.slug)
+    .slice(0, 4)
+    .map(toDisplayProduct) || [];
 
   return (
     <div className="py-8 md:py-12">
@@ -69,7 +80,6 @@ const ProductDetail = () => {
                 loading="lazy"
               />
             </div>
-            {/* Day/Night Toggle */}
             <Button
               variant="outline"
               size="sm"
@@ -93,12 +103,9 @@ const ProductDetail = () => {
             <p className="mt-1 text-xs text-muted-foreground">Inclusive of all taxes · Free shipping across India</p>
 
             <Separator className="my-6" />
-
             <p className="leading-relaxed text-muted-foreground">{product.longDescription}</p>
-
             <Separator className="my-6" />
 
-            {/* Details */}
             <div className="grid gap-3 text-sm">
               {product.dimensions && (
                 <div className="flex justify-between">
@@ -114,7 +121,6 @@ const ProductDetail = () => {
 
             <Separator className="my-6" />
 
-            {/* Authenticity Badges */}
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Shield className="h-4 w-4 text-primary" />
@@ -136,7 +142,6 @@ const ProductDetail = () => {
           </motion.div>
         </div>
 
-        {/* Related */}
         {related.length > 0 && (
           <section className="mt-20">
             <h2 className="font-serif text-2xl font-bold text-foreground">You May Also Like</h2>

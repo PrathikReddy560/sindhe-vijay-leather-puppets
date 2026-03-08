@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag, Menu, X, User, LogOut } from "lucide-react";
+import { ShoppingBag, Menu, X, User, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useAdmin } from "@/hooks/useAdmin";
 import { Badge } from "@/components/ui/badge";
 
 const navLinks = [
@@ -17,6 +18,7 @@ const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { totalItems, setIsOpen } = useCart();
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const location = useLocation();
 
   return (
@@ -43,6 +45,16 @@ const Navbar = () => {
               {link.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className={`flex items-center gap-1 text-sm font-medium transition-colors hover:text-primary ${
+                location.pathname === "/admin" ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <Shield className="h-3.5 w-3.5" /> Admin
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -90,6 +102,17 @@ const Navbar = () => {
                 {link.label}
               </Link>
             ))}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-2 rounded-md px-4 py-3 text-sm font-medium transition-colors hover:bg-muted ${
+                  location.pathname === "/admin" ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <Shield className="h-4 w-4" /> Admin Panel
+              </Link>
+            )}
           </nav>
         </div>
       )}
