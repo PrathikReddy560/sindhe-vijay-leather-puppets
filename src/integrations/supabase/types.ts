@@ -14,6 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          price: number
+          product_id: string
+          product_image: string
+          product_name: string
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          price?: number
+          product_id: string
+          product_image?: string
+          product_name: string
+          quantity?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          price?: number
+          product_id?: string
+          product_image?: string
+          product_name?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          payment_method: string
+          shipping_address: string
+          shipping_city: string
+          shipping_cost: number
+          shipping_name: string
+          shipping_phone: string
+          shipping_pincode: string
+          shipping_state: string
+          status: Database["public"]["Enums"]["order_status"]
+          subtotal: number
+          total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          payment_method?: string
+          shipping_address: string
+          shipping_city: string
+          shipping_cost?: number
+          shipping_name: string
+          shipping_phone: string
+          shipping_pincode: string
+          shipping_state: string
+          status?: Database["public"]["Enums"]["order_status"]
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          payment_method?: string
+          shipping_address?: string
+          shipping_city?: string
+          shipping_cost?: number
+          shipping_name?: string
+          shipping_phone?: string
+          shipping_pincode?: string
+          shipping_state?: string
+          status?: Database["public"]["Enums"]["order_status"]
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: Database["public"]["Enums"]["product_category"]
@@ -141,6 +246,12 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       inventory_tag: "in-stock" | "made-to-order" | "limited-edition"
+      order_status:
+        | "pending"
+        | "confirmed"
+        | "shipped"
+        | "delivered"
+        | "cancelled"
       product_category: "big-paintings" | "medium-paintings" | "hanging-lamps"
     }
     CompositeTypes: {
@@ -271,6 +382,13 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       inventory_tag: ["in-stock", "made-to-order", "limited-edition"],
+      order_status: [
+        "pending",
+        "confirmed",
+        "shipped",
+        "delivered",
+        "cancelled",
+      ],
       product_category: ["big-paintings", "medium-paintings", "hanging-lamps"],
     },
   },
