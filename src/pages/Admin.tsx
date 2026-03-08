@@ -58,6 +58,46 @@ const Admin = () => {
   const [uploadingDay, setUploadingDay] = useState(false);
   const [uploadingNight, setUploadingNight] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState("products");
+
+  // Orders state
+  const [orders, setOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderFilter, setOrderFilter] = useState<string>("all");
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*, order_items(*)")
+      .order("created_at", { ascending: false });
+    if (!error && data) setOrders(data);
+    setOrdersLoading(false);
+  };
+
+  useEffect(() => {
+    if (isAdmin && activeTab === "orders") fetchOrders();
+  }, [isAdmin, activeTab]);
+
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    setUpdatingOrderId(orderId);
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: newStatus as any })
+      .eq("id", orderId);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Order status updated" });
+      setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
+    }
+    setUpdatingOrderId(null);
+  };
+
+  const filteredOrders = orderFilter === "all"
+    ? orders
+    : orders.filter((o) => o.status === orderFilter);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/login");
