@@ -1,24 +1,49 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
 
 const Login = () => {
   const { toast } = useToast();
+  const { signIn, signUp, user } = useAuth();
+  const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  if (user) {
+    navigate("/profile");
+    return null;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: isSignUp ? "Account created!" : "Logged in!",
-      description: "Authentication will be connected once Lovable Cloud is set up.",
-    });
+    setLoading(true);
+
+    if (isSignUp) {
+      const { error } = await signUp(email, password, fullName);
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Account created!", description: "Check your email to confirm your account." });
+      }
+    } else {
+      const { error } = await signIn(email, password);
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Welcome back!" });
+        navigate("/profile");
+      }
+    }
+    setLoading(false);
   };
 
   return (
@@ -42,7 +67,7 @@ const Login = () => {
             {isSignUp && (
               <div>
                 <Label htmlFor="name">Full Name</Label>
-                <Input id="name" placeholder="Your name" />
+                <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your name" required />
               </div>
             )}
             <div>
@@ -51,15 +76,15 @@ const Login = () => {
             </div>
             <div>
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
             </div>
             {!isSignUp && (
               <div className="text-right">
                 <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot password?</Link>
               </div>
             )}
-            <Button type="submit" className="w-full" size="lg">
-              {isSignUp ? "Create Account" : "Sign In"}
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
             </Button>
           </form>
 
