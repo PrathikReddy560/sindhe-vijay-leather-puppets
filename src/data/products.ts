@@ -3,6 +3,7 @@ export type InventoryTag = "in-stock" | "made-to-order" | "limited-edition";
 
 export interface Product {
   id: string;
+  slug?: string;
   name: string;
   description: string;
   longDescription: string;
