@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag, Menu, X, User } from "lucide-react";
+import { ShoppingBag, Menu, X, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 
 const navLinks = [
@@ -15,12 +16,12 @@ const navLinks = [
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { totalItems, setIsOpen } = useCart();
+  const { user } = useAuth();
   const location = useLocation();
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="container flex h-16 items-center justify-between md:h-20">
-        {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <span className="font-serif text-lg font-bold tracking-tight text-foreground md:text-xl">
             Sindhe Vijay
@@ -30,7 +31,6 @@ const Navbar = () => {
           </span>
         </Link>
 
-        {/* Desktop Nav */}
         <nav className="hidden items-center gap-8 md:flex">
           {navLinks.map((link) => (
             <Link
@@ -45,11 +45,10 @@ const Navbar = () => {
           ))}
         </nav>
 
-        {/* Actions */}
         <div className="flex items-center gap-2">
-          <Link to="/login">
+          <Link to={user ? "/profile" : "/login"}>
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-              <User className="h-5 w-5" />
+              {user ? <User className="h-5 w-5 text-primary" /> : <User className="h-5 w-5" />}
             </Button>
           </Link>
           <Button
@@ -76,7 +75,6 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {mobileOpen && (
         <div className="border-t bg-background md:hidden">
           <nav className="container flex flex-col gap-1 py-4">
