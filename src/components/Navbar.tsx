@@ -25,12 +25,7 @@ const Navbar = () => {
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="container flex h-16 items-center justify-between md:h-20">
         <Link to="/" className="flex items-center gap-2">
-          <span className="font-serif text-lg font-bold tracking-tight text-foreground md:text-xl">
-            Sindhe Vijay
-          </span>
-          <span className="hidden font-serif text-sm italic text-muted-foreground sm:inline">
-            Leather Puppets
-          </span>
+          <img src="/images/logo.jpeg" alt="Sindhe Vijay Leather Puppets" className="h-10 w-auto md:h-12" />
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
