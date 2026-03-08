@@ -242,8 +242,9 @@ const Checkout = () => {
                         <MessageCircle className="h-4 w-4" /> Confirm via WhatsApp
                       </a>
                     </Button>
-                    <Button className="flex-1 gap-2" size="lg" onClick={handlePlaceOrder}>
-                      <ShieldCheck className="h-4 w-4" /> I Have Paid
+                    <Button className="flex-1 gap-2" size="lg" onClick={handlePlaceOrder} disabled={placingOrder}>
+                      {placingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                      {placingOrder ? "Placing Order..." : "I Have Paid"}
                     </Button>
                   </div>
                 </div>
