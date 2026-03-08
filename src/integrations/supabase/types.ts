@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      products: {
+        Row: {
+          category: Database["public"]["Enums"]["product_category"]
+          created_at: string
+          description: string
+          dimensions: string | null
+          featured: boolean
+          id: string
+          image_day: string
+          image_night: string | null
+          inventory_tag: Database["public"]["Enums"]["inventory_tag"]
+          long_description: string
+          material: string
+          name: string
+          price: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["product_category"]
+          created_at?: string
+          description?: string
+          dimensions?: string | null
+          featured?: boolean
+          id?: string
+          image_day?: string
+          image_night?: string | null
+          inventory_tag?: Database["public"]["Enums"]["inventory_tag"]
+          long_description?: string
+          material?: string
+          name: string
+          price?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["product_category"]
+          created_at?: string
+          description?: string
+          dimensions?: string | null
+          featured?: boolean
+          id?: string
+          image_day?: string
+          image_night?: string | null
+          inventory_tag?: Database["public"]["Enums"]["inventory_tag"]
+          long_description?: string
+          material?: string
+          name?: string
+          price?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
@@ -53,15 +107,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
+      inventory_tag: "in-stock" | "made-to-order" | "limited-edition"
+      product_category: "big-paintings" | "medium-paintings" | "hanging-lamps"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -188,6 +268,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+      inventory_tag: ["in-stock", "made-to-order", "limited-edition"],
+      product_category: ["big-paintings", "medium-paintings", "hanging-lamps"],
+    },
   },
 } as const
