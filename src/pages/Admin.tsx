@@ -112,11 +112,15 @@ const Admin = () => {
           items: order.order_items,
         },
       });
-      if (error) throw error;
+      if (error) {
+        // Log error but don't block - email is optional until domain is verified
+        console.warn("Email notification skipped (Resend domain not verified):", error.message);
+        return;
+      }
       toast({ title: "📧 Email notification sent" });
     } catch (err: any) {
-      console.error("Email notification error:", err);
-      toast({ title: "Email failed", description: err.message, variant: "destructive" });
+      // Silently log - don't show error toast for email failures
+      console.warn("Email notification skipped:", err.message);
     }
   };
 
