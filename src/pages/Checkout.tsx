@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, CreditCard, Smartphone, Building2, Lock, ShieldCheck } from "lucide-react";
+import { ArrowLeft, MessageCircle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -33,7 +33,7 @@ const Checkout = () => {
     fullName: "", phone: "", address: "", city: "", state: "", pincode: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [paymentMethod, setPaymentMethod] = useState("upi");
+  
 
   if (items.length === 0) {
     return (
@@ -168,33 +168,40 @@ const Checkout = () => {
             {/* Step 3: Payment */}
             {step === 3 && (
               <div className="space-y-6">
-                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
-                  {[
-                    { value: "upi", label: "UPI (Google Pay / PhonePe)", icon: Smartphone },
-                    { value: "card", label: "Credit / Debit Card", icon: CreditCard },
-                    { value: "netbanking", label: "Net Banking", icon: Building2 },
-                  ].map(({ value, label, icon: Icon }) => (
-                    <Label
-                      key={value}
-                      htmlFor={value}
-                      className={`flex cursor-pointer items-center gap-4 rounded-lg border p-4 transition-colors ${
-                        paymentMethod === value ? "border-primary bg-primary/5" : "bg-card"
-                      }`}
-                    >
-                      <RadioGroupItem value={value} id={value} />
-                      <Icon className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm font-medium">{label}</span>
-                    </Label>
-                  ))}
-                </RadioGroup>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Lock className="h-3 w-3" /> Your payment information is encrypted and secure
+                <div className="rounded-lg border bg-card p-6 text-center">
+                  <h3 className="font-serif text-lg font-semibold text-foreground">Scan & Pay</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Scan the QR code below using any UPI app (PhonePe, Google Pay, Paytm, etc.)
+                  </p>
+                  <div className="mx-auto mt-4 w-64 overflow-hidden rounded-lg border">
+                    <img src="/images/payment-qr.jpeg" alt="Payment QR Code - Scan to pay via UPI" className="w-full" />
+                  </div>
+                  <p className="mt-3 text-lg font-bold text-primary">Amount: {formatPrice(grandTotal)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Pay to: VIJAY S H</p>
                 </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-foreground">After payment, confirm your order:</p>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button variant="outline" className="flex-1 gap-2" asChild>
+                      <a
+                        href={`https://wa.me/919876543210?text=${encodeURIComponent(`Hi! I've made a payment of ${formatPrice(grandTotal)} for my order. Here's my screenshot.`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <MessageCircle className="h-4 w-4" /> Confirm via WhatsApp
+                      </a>
+                    </Button>
+                    <Button className="flex-1 gap-2" size="lg" onClick={handlePlaceOrder}>
+                      <ShieldCheck className="h-4 w-4" /> I Have Paid
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-                  <Button className="flex-1 gap-2" size="lg" onClick={handlePlaceOrder}>
-                    <ShieldCheck className="h-4 w-4" /> Place Order — {formatPrice(grandTotal)}
-                  </Button>
                 </div>
               </div>
             )}
