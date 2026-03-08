@@ -1,10 +1,10 @@
 import { motion } from "framer-motion";
 
 const timeline = [
-  { era: "~1800s", title: "The Beginning", desc: "The Sindhe family begins their journey in leather puppetry in the village of Nimmalakunta, Andhra Pradesh, creating puppets for royal courts and temple festivals." },
+  { era: "~1800s", title: "The Beginning", desc: "The Sindhe family begins their journey in leather puppetry in the village of Jeekavandlapalli, Karnataka, creating puppets for royal courts and temple festivals." },
   { era: "~1900s", title: "Golden Era of Performances", desc: "Shadow puppet shows become the primary entertainment across South Indian villages. The Sindhe family performs epic tales from the Ramayana and Mahabharata to audiences of thousands." },
   { era: "~1960s", title: "Facing Modernity", desc: "With the arrival of cinema and television, traditional puppet performances decline. The family adapts by creating decorative pieces and wall art alongside performance puppets." },
-  { era: "~1990s", title: "National Recognition", desc: "The artform gains national attention. Government initiatives and cultural festivals bring Tholu Bommalata to international stages, preserving the heritage." },
+  { era: "~1990s", title: "National Recognition", desc: "The artform gains national attention. Government initiatives and cultural festivals bring Thogalu Gombe to international stages, preserving the heritage." },
   { era: "Today", title: "8th Generation Renaissance", desc: "The current generation combines ancestral techniques with contemporary design, bringing this ancient art into modern homes as luxury décor, lighting, and wearable art." },
 ];
 
@@ -24,9 +24,9 @@ const Heritage = () => (
           <span className="italic text-primary">Living Heritage</span>
         </h1>
         <p className="mx-auto mt-6 max-w-xl leading-relaxed text-muted-foreground">
-          In the sun-baked village of Nimmalakunta, nestled in the Anantapur district of
-          Andhra Pradesh, the Sindhe family has been transforming humble goat hide into
-          luminous works of art for over two centuries.
+          In the village of Jeekavandlapalli, nestled in Chikkabalapur district of
+          Karnataka, the Sindhe family has been transforming humble goat hide into
+          luminous works of art for generations.
         </p>
       </motion.div>
 
@@ -38,10 +38,10 @@ const Heritage = () => (
         transition={{ duration: 0.6 }}
         className="mx-auto mt-16 max-w-3xl"
       >
-        <h2 className="font-serif text-2xl font-bold text-foreground md:text-3xl">What is Tholu Bommalata?</h2>
+        <h2 className="font-serif text-2xl font-bold text-foreground md:text-3xl">What is Thogalu Gombe?</h2>
         <p className="mt-4 leading-relaxed text-muted-foreground">
-          <em>Tholu Bommalata</em> — literally "the dance of leather puppets" — is one of the oldest
-          forms of shadow puppetry in the world. Originating in Andhra Pradesh, this art form uses
+          <em>Thogalu Gombe</em> — literally "leather puppets" in Kannada — is one of the oldest
+          forms of shadow puppetry in Karnataka. This art form uses
           large, translucent leather puppets held against a white cloth screen, backlit by an oil lamp
           or fire. The leather's perforations and colored dyes create vivid, moving images that bring
           mythological epics to life.
@@ -78,7 +78,7 @@ const Heritage = () => (
         </div>
       </section>
 
-      {/* Nimmalakunta */}
+      {/* Jeekavandlapalli */}
       <motion.section
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -86,18 +86,17 @@ const Heritage = () => (
         transition={{ duration: 0.6 }}
         className="mx-auto mt-20 max-w-3xl rounded-lg border bg-card p-8"
       >
-        <h2 className="font-serif text-2xl font-bold text-foreground">Nimmalakunta — The Village of Puppets</h2>
+        <h2 className="font-serif text-2xl font-bold text-foreground">Jeekavandlapalli — The Village of Puppets</h2>
         <p className="mt-4 leading-relaxed text-muted-foreground">
-          Nimmalakunta is a small village in Dharmavaram mandal that has been synonymous with leather
-          puppetry for centuries. Nearly every household in the village was once involved in some
-          aspect of puppet-making — from hide preparation to painting to performance. Today, the
-          village remains a living museum of this ancient craft, with artisans continuing to work
-          under thatched-roof workshops, just as their ancestors did.
+          Jeekavandlapalli is a village in Bagepalli taluk, Chikkabalapur district, that has been
+          home to traditional leather puppetry for generations. The artisans here continue to work
+          using time-honoured techniques, keeping the ancient craft of Thogalu Gombe alive
+          through their dedication and skill.
         </p>
         <p className="mt-4 leading-relaxed text-muted-foreground">
           By purchasing from Sindhe Vijay Leather Puppets, you are directly supporting the
-          preservation of this UNESCO-recognized intangible cultural heritage and the livelihoods
-          of artisan families in Nimmalakunta.
+          preservation of this traditional cultural heritage and the livelihoods
+          of artisan families in Jeekavandlapalli.
         </p>
       </motion.section>
     </div>

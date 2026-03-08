@@ -187,7 +187,7 @@ const Checkout = () => {
                   <div className="flex flex-col gap-3 sm:flex-row">
                     <Button variant="outline" className="flex-1 gap-2" asChild>
                       <a
-                        href={`https://wa.me/919876543210?text=${encodeURIComponent(`Hi! I've made a payment of ${formatPrice(grandTotal)} for my order. Here's my screenshot.`)}`}
+                        href={`https://wa.me/919113599830?text=${encodeURIComponent(`Hi! I've made a payment of ${formatPrice(grandTotal)} for my order. Here's my screenshot.`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
