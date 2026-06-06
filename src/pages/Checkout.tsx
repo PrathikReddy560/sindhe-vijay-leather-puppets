@@ -129,6 +129,11 @@ const Checkout = () => {
         if (itemsError) throw itemsError;
       }
 
+      // Open WhatsApp link in new tab with the generated Order ID
+      const waMessage = `Hi! I've made a payment of ${formatPrice(grandTotal)} for my Order ${orderId}. Here's my screenshot.`;
+      const waUrl = `https://wa.me/919113599830?text=${encodeURIComponent(waMessage)}`;
+      window.open(waUrl, "_blank");
+
       clearCart();
       navigate(`/thank-you?orderId=${orderId}`);
     } catch (err: any) {
@@ -252,22 +257,22 @@ const Checkout = () => {
                 <Separator />
 
                 <div className="space-y-3">
-                  <p className="text-sm font-medium text-foreground">After payment, confirm your order:</p>
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <Button variant="outline" className="flex-1 gap-2" asChild>
-                      <a
-                        href={`https://wa.me/919113599830?text=${encodeURIComponent(`Hi! I've made a payment of ${formatPrice(grandTotal)} for my order. Here's my screenshot.`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <MessageCircle className="h-4 w-4" /> Confirm via WhatsApp
-                      </a>
-                    </Button>
-                    <Button className="flex-1 gap-2" size="lg" onClick={handlePlaceOrder} disabled={placingOrder}>
-                      {placingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                      {placingOrder ? "Placing Order..." : "I Have Paid"}
-                    </Button>
-                  </div>
+                  <p className="text-sm font-medium text-muted-foreground text-center">
+                    To complete your order, please click below to send your payment screenshot on WhatsApp.
+                  </p>
+                  <Button
+                    className="w-full gap-2 font-semibold"
+                    size="lg"
+                    onClick={handlePlaceOrder}
+                    disabled={placingOrder}
+                  >
+                    {placingOrder ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <MessageCircle className="h-5 w-5" />
+                    )}
+                    {placingOrder ? "Confirming Order..." : "Confirm & Send Screenshot on WhatsApp"}
+                  </Button>
                 </div>
 
                 <div className="flex gap-3">
