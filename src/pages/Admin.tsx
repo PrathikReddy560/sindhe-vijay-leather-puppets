@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useProducts, DbProduct } from "@/hooks/useProducts";
+import { useCategories } from "@/hooks/useCategories";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,19 +24,13 @@ import { useToast } from "@/hooks/use-toast";
 const formatPrice = (p: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(p);
 
-const categoryLabels: Record<string, string> = {
-  "big-paintings": "Big Paintings",
-  "medium-paintings": "Medium Paintings",
-  "hanging-lamps": "Hanging Lamps",
-};
-
 const emptyProduct = {
   slug: "",
   name: "",
   description: "",
   long_description: "",
   price: 0,
-  category: "medium-paintings" as const,
+  category: "lamps",
   inventory_tag: "in-stock" as const,
   image_day: "",
   image_night: "",
@@ -49,8 +44,55 @@ const Admin = () => {
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const { data: products, isLoading } = useProducts();
+  const { data: dbCategories } = useCategories();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategorySlug, setNewCategorySlug] = useState("");
+  const [addingCategory, setAddingCategory] = useState(false);
+
+  const getCategoryLabel = (slug: string) => {
+    const found = dbCategories?.find((c: any) => c.slug === slug);
+    return found ? found.name : slug;
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim() || !newCategorySlug.trim()) {
+      toast({ title: "Error", description: "Name and Slug are required", variant: "destructive" });
+      return;
+    }
+    setAddingCategory(true);
+    try {
+      // Get max display order
+      const { data: maxOrderData } = await supabase
+        .from("categories" as any)
+        .select("display_order")
+        .order("display_order", { ascending: false })
+        .limit(1);
+
+      const nextOrder = maxOrderData && maxOrderData[0] ? (maxOrderData[0].display_order + 1) : 1;
+
+      const { error } = await supabase
+        .from("categories" as any)
+        .insert({
+          name: newCategoryName.trim(),
+          slug: newCategorySlug.trim().toLowerCase(),
+          display_order: nextOrder
+        });
+
+      if (error) throw error;
+
+      toast({ title: "Category added successfully" });
+      setNewCategoryName("");
+      setNewCategorySlug("");
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+    } catch (err: any) {
+      toast({ title: "Error adding category", description: err.message, variant: "destructive" });
+    } finally {
+      setAddingCategory(false);
+    }
+  };
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<typeof emptyProduct & { id?: string }>(emptyProduct);
@@ -369,6 +411,9 @@ const Admin = () => {
           <TabsTrigger value="backgrounds" className="gap-2">
             <Image className="h-4 w-4" /> Hero Backgrounds
           </TabsTrigger>
+          <TabsTrigger value="categories" className="gap-2">
+            <Plus className="h-4 w-4" /> Categories
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="products">
@@ -417,9 +462,9 @@ const Admin = () => {
                       <Select value={editingProduct.category} onValueChange={(v: any) => setEditingProduct((p) => ({ ...p, category: v }))}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="big-paintings">Big Paintings</SelectItem>
-                          <SelectItem value="medium-paintings">Medium Paintings</SelectItem>
-                          <SelectItem value="hanging-lamps">Hanging Lamps</SelectItem>
+                          {(dbCategories || []).map((cat) => (
+                            <SelectItem key={cat.slug} value={cat.slug}>{cat.name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -557,9 +602,9 @@ const Admin = () => {
               <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="big-paintings">Big Paintings</SelectItem>
-                <SelectItem value="medium-paintings">Medium Paintings</SelectItem>
-                <SelectItem value="hanging-lamps">Hanging Lamps</SelectItem>
+                {(dbCategories || []).map((cat) => (
+                  <SelectItem key={cat.slug} value={cat.slug}>{cat.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -589,7 +634,7 @@ const Admin = () => {
                       </TableCell>
                       <TableCell className="font-medium">{product.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{categoryLabels[product.category]}</Badge>
+                        <Badge variant="outline">{getCategoryLabel(product.category)}</Badge>
                       </TableCell>
                       <TableCell>{formatPrice(product.price)}</TableCell>
                       <TableCell>
@@ -888,6 +933,79 @@ const Admin = () => {
                 )}
               </div>
             )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Create Category Card */}
+            <Card className="md:col-span-1">
+              <CardHeader>
+                <CardTitle className="font-serif">Add Category</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="catName">Category Name</Label>
+                  <Input
+                    id="catName"
+                    placeholder="e.g. Story Paintings"
+                    value={newCategoryName}
+                    onChange={(e) => {
+                      setNewCategoryName(e.target.value);
+                      // Auto-generate slug
+                      setNewCategorySlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="catSlug">Category Slug</Label>
+                  <Input
+                    id="catSlug"
+                    placeholder="e.g. story-paintings"
+                    value={newCategorySlug}
+                    onChange={(e) => setNewCategorySlug(e.target.value)}
+                  />
+                </div>
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={handleAddCategory} disabled={addingCategory}>
+                  {addingCategory && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Create Category
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* List Categories Card */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="font-serif">Current Categories</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Order</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Slug</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(dbCategories || []).map((cat, index) => (
+                        <TableRow key={cat.id || cat.slug}>
+                          <TableCell className="font-medium">{cat.display_order || (index + 1)}</TableCell>
+                          <TableCell className="font-medium">{cat.name}</TableCell>
+                          <TableCell className="font-mono text-xs">{cat.slug}</TableCell>
+                        </TableRow>
+                      ))}
+                      {(!dbCategories || dbCategories.length === 0) && (
+                        <TableRow>
+                          <TableCell colSpan={3} className="py-10 text-center text-muted-foreground">No categories found</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>

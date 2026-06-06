@@ -5,6 +5,7 @@ import { ArrowRight, Shield, Award, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/ProductCard";
 import { useFeaturedProducts, toDisplayProduct } from "@/hooks/useProducts";
+import { useCategories } from "@/hooks/useCategories";
 import { categories } from "@/data/products";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,6 +23,7 @@ const defaultBackgrounds = [
 
 const Index = () => {
   const { data: featuredDb, isLoading } = useFeaturedProducts();
+  const { data: dbCategories } = useCategories();
   const featured = featuredDb?.map(toDisplayProduct) || [];
   const [heroBackgrounds, setHeroBackgrounds] = useState<string[]>(defaultBackgrounds);
   const [bgIndex, setBgIndex] = useState(0);
@@ -150,7 +152,7 @@ const Index = () => {
             <h2 className="mt-3 font-serif text-3xl font-bold text-foreground md:text-4xl">Browse by Category</h2>
           </div>
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {categories.map((cat, i) => (
+            {(dbCategories ? dbCategories.map(c => ({ value: c.slug, label: c.name })) : categories).map((cat, i) => (
               <motion.div key={cat.value} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.5 }}>
                 <Link to={`/shop?category=${cat.value}`} className="group flex h-40 items-end overflow-hidden rounded-lg bg-muted p-6 transition-shadow hover:shadow-lg">
                   <span className="font-serif text-lg font-semibold text-foreground group-hover:text-primary transition-colors">{cat.label}</span>

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, SlidersHorizontal, X } from "lucide-react";
 import { useProducts, toDisplayProduct } from "@/hooks/useProducts";
+import { useCategories } from "@/hooks/useCategories";
 import { categories, ProductCategory } from "@/data/products";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ const sortOptions = [
 ];
 
 const Shop = () => {
+  const { data: dbCategories } = useCategories();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = searchParams.get("category") as ProductCategory | null;
   const [activeCategory, setActiveCategory] = useState<ProductCategory | "all">(initialCategory || "all");
@@ -103,7 +105,7 @@ const Shop = () => {
           >
             All
           </Button>
-          {categories.map((cat) => (
+          {(dbCategories ? dbCategories.map(c => ({ value: c.slug, label: c.name })) : categories).map((cat) => (
             <Button
               key={cat.value}
               variant={activeCategory === cat.value ? "default" : "outline"}
@@ -178,7 +180,7 @@ const Shop = () => {
               </div>
 
               {/* Size filter (for lamps) */}
-              {(activeCategory === "all" || activeCategory === "hanging-lamps") && (
+              {(activeCategory === "all" || activeCategory === "hanging-lamps" || activeCategory === "lamps") && (
                 <div className="space-y-3">
                   <label className="text-sm font-medium text-foreground">Lamp Size</label>
                   <div className="flex flex-wrap gap-2">

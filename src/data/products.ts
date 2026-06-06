@@ -1,4 +1,4 @@
-export type ProductCategory = "big-paintings" | "medium-paintings" | "hanging-lamps";
+export type ProductCategory = string;
 export type InventoryTag = "in-stock" | "made-to-order" | "limited-edition";
 
 export interface Product {
@@ -17,9 +17,13 @@ export interface Product {
 }
 
 export const categories: { value: ProductCategory; label: string }[] = [
-  { value: "big-paintings", label: "Big Paintings — Pure Leather" },
-  { value: "medium-paintings", label: "Medium Paintings" },
-  { value: "hanging-lamps", label: "Hanging Lamps" },
+  { value: "lamps", label: "Lamps" },
+  { value: "gifting-purpose", label: "Gifting Purpose" },
+  { value: "paintings", label: "Paintings" },
+  { value: "story-paintings", label: "Story Paintings" },
+  { value: "hangings", label: "Hangings" },
+  { value: "puppets", label: "Puppets" },
+  { value: "new-innovated-products", label: "New Innovated Products" },
 ];
 
 export const products: Product[] = [
