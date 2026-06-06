@@ -95,7 +95,7 @@ const Checkout = () => {
         if (orderError) throw orderError;
 
         // Fetch matching product UUIDs from database by their slugs
-        const slugs = items.map(({ product }) => product.id);
+        const slugs = items.map(({ product }) => product.slug || product.id);
         const { data: dbProducts, error: productsError } = await supabase
           .from("products")
           .select("id, slug")
@@ -111,7 +111,10 @@ const Checkout = () => {
 
         // Save order items using the matched UUIDs
         const orderItems = items.map(({ product, quantity }) => {
-          const dbId = idMap[product.id];
+          const slug = product.slug || product.id;
+          const isUuid = typeof product.id === "string" && product.id.length === 36;
+          const dbId = isUuid ? product.id : idMap[slug];
+
           if (!dbId) {
             throw new Error(`Product "${product.name}" was not found in the database.`);
           }
