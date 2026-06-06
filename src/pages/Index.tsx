@@ -1,5 +1,6 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Shield, Award, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/ProductCard";
@@ -11,33 +12,65 @@ const fadeUp = {
   visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.15, duration: 0.6 } }),
 };
 
+const heroBackgrounds = [
+  "/images/products/big-ganesha.jpg",
+  "/images/products/lamp-2-night.jpg",
+  "/images/products/big-ramayana.jpg",
+  "/images/products/lamp-4-night.jpg",
+];
+
 const Index = () => {
   const { data: featuredDb, isLoading } = useFeaturedProducts();
   const featured = featuredDb?.map(toDisplayProduct) || [];
+  const [bgIndex, setBgIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setBgIndex((prev) => (prev + 1) % heroBackgrounds.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <>
       {/* Hero */}
-      <section className="relative flex min-h-[80vh] items-center overflow-hidden bg-gradient-to-br from-background via-parchment to-muted">
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url('/placeholder.svg')", backgroundSize: "300px", backgroundRepeat: "repeat" }} />
-        <div className="container relative z-10 py-20">
+      <section className="relative flex min-h-[85vh] items-center overflow-hidden bg-black text-white">
+        {/* Background Slideshow */}
+        <div className="absolute inset-0 z-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={bgIndex}
+              initial={{ opacity: 0, scale: 1.08 }}
+              animate={{ opacity: 0.45, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 1.8, ease: "easeInOut" }}
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+              style={{ backgroundImage: `url('${heroBackgrounds[bgIndex]}')` }}
+            />
+          </AnimatePresence>
+          {/* Cinematic Overlays */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black/80 z-10" />
+          <div className="absolute inset-0 z-10 opacity-70" style={{ background: "radial-gradient(circle, transparent 20%, rgba(0,0,0,0.8) 100%)" }} />
+        </div>
+
+        <div className="container relative z-20 py-24">
           <motion.div initial="hidden" animate="visible" className="mx-auto max-w-3xl text-center">
-            <motion.p variants={fadeUp} custom={0} className="text-sm font-medium uppercase tracking-[0.3em] text-primary">
+            <motion.p variants={fadeUp} custom={0} className="text-xs font-semibold uppercase tracking-[0.4em] text-amber-400">
               Jeekavandlapalli · Karnataka
             </motion.p>
-            <motion.h1 variants={fadeUp} custom={1} className="mt-4 font-serif text-4xl font-bold leading-tight text-foreground md:text-6xl lg:text-7xl">
+            <motion.h1 variants={fadeUp} custom={1} className="mt-4 font-serif text-4xl font-bold leading-tight text-white md:text-6xl lg:text-7xl">
               The Dance of<br />
-              <span className="italic text-primary">Shadows & Light</span>
+              <span className="italic text-amber-400 drop-shadow-[0_2px_15px_rgba(251,191,36,0.3)]">Shadows & Light</span>
             </motion.h1>
-            <motion.p variants={fadeUp} custom={2} className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
+            <motion.p variants={fadeUp} custom={2} className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-stone-200 md:text-lg">
               Handcrafted leather shadow puppets and luminous art from the ancient tradition of
               Thogalu Gombe — where goat hide transforms into stories that dance with light.
             </motion.p>
             <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <Button size="lg" asChild>
+              <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" asChild>
                 <Link to="/shop">Explore Collection <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
-              <Button variant="outline" size="lg" asChild>
+              <Button variant="outline" size="lg" className="text-white border-white/30 hover:bg-white/10 hover:text-white" asChild>
                 <Link to="/heritage">Our Heritage</Link>
               </Button>
             </motion.div>
