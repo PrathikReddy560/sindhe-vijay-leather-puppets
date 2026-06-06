@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/ProductCard";
 import { useFeaturedProducts, toDisplayProduct } from "@/hooks/useProducts";
 import { categories } from "@/data/products";
+import { supabase } from "@/integrations/supabase/client";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.15, duration: 0.6 } }),
 };
 
-const heroBackgrounds = [
+const defaultBackgrounds = [
   "/images/products/big-ganesha.jpg",
   "/images/products/lamp-2-night.jpg",
   "/images/products/big-ramayana.jpg",
@@ -22,14 +23,35 @@ const heroBackgrounds = [
 const Index = () => {
   const { data: featuredDb, isLoading } = useFeaturedProducts();
   const featured = featuredDb?.map(toDisplayProduct) || [];
+  const [heroBackgrounds, setHeroBackgrounds] = useState<string[]>(defaultBackgrounds);
   const [bgIndex, setBgIndex] = useState(0);
 
   useEffect(() => {
+    const fetchHeroSlides = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("hero_slides" as any)
+          .select("image_url")
+          .order("created_at", { ascending: true });
+        
+        if (!error && data && data.length > 0) {
+          setHeroBackgrounds(data.map((slide: any) => slide.image_url));
+        }
+      } catch (err) {
+        console.error("Error fetching hero slides:", err);
+      }
+    };
+
+    fetchHeroSlides();
+  }, []);
+
+  useEffect(() => {
+    if (heroBackgrounds.length <= 1) return;
     const timer = setInterval(() => {
       setBgIndex((prev) => (prev + 1) % heroBackgrounds.length);
     }, 6000);
     return () => clearInterval(timer);
-  }, []);
+  }, [heroBackgrounds]);
 
   return (
     <>

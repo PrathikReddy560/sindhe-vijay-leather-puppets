@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, Upload, Shield, Loader2, Package, MessageCircle, Mail } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Shield, Loader2, Package, MessageCircle, Mail, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -66,6 +66,12 @@ const Admin = () => {
   const [orderFilter, setOrderFilter] = useState<string>("all");
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
+  // Hero slides state
+  const [heroSlides, setHeroSlides] = useState<any[]>([]);
+  const [heroSlidesLoading, setHeroSlidesLoading] = useState(false);
+  const [uploadingSlide, setUploadingSlide] = useState(false);
+  const [customSlideUrl, setCustomSlideUrl] = useState("");
+
   const fetchOrders = async () => {
     setOrdersLoading(true);
     const { data, error } = await supabase
@@ -76,8 +82,73 @@ const Admin = () => {
     setOrdersLoading(false);
   };
 
+  const fetchHeroSlides = async () => {
+    setHeroSlidesLoading(true);
+    const { data, error } = await supabase
+      .from("hero_slides" as any)
+      .select("*")
+      .order("created_at", { ascending: true });
+    if (!error && data) setHeroSlides(data);
+    setHeroSlidesLoading(false);
+  };
+
+  const handleUploadSlide = async (file: File) => {
+    setUploadingSlide(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `hero-slides/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("product-images").upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+
+      const { error: insertError } = await supabase
+        .from("hero_slides" as any)
+        .insert({ image_url: publicUrl });
+
+      if (insertError) throw insertError;
+
+      toast({ title: "Background uploaded", description: "Image successfully added to backgrounds slideshow." });
+      fetchHeroSlides();
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingSlide(false);
+    }
+  };
+
+  const handleAddCustomSlideUrl = async () => {
+    if (!customSlideUrl.trim()) return;
+    try {
+      const { error } = await supabase
+        .from("hero_slides" as any)
+        .insert({ image_url: customSlideUrl.trim() });
+      if (error) throw error;
+      toast({ title: "Background added", description: "Image URL successfully added to backgrounds slideshow." });
+      setCustomSlideUrl("");
+      fetchHeroSlides();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteSlide = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("hero_slides" as any)
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      toast({ title: "Background deleted" });
+      fetchHeroSlides();
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    }
+  };
+
   useEffect(() => {
     if (isAdmin && activeTab === "orders") fetchOrders();
+    if (isAdmin && activeTab === "backgrounds") fetchHeroSlides();
   }, [isAdmin, activeTab]);
 
   const getWhatsAppMessage = (order: any, newStatus: string) => {
@@ -294,6 +365,9 @@ const Admin = () => {
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="orders" className="gap-2">
             <Package className="h-4 w-4" /> Orders
+          </TabsTrigger>
+          <TabsTrigger value="backgrounds" className="gap-2">
+            <Image className="h-4 w-4" /> Hero Backgrounds
           </TabsTrigger>
         </TabsList>
 
@@ -704,6 +778,117 @@ const Admin = () => {
               </Table>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="backgrounds">
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="font-serif">Manage Hero Slideshow</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <Label className="text-base font-medium">Add New Background Image</Label>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload an image file or paste a direct image URL. Uploaded images will be saved in your Supabase storage.
+                </p>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                  {/* File Upload */}
+                  <div className="flex-1 space-y-2">
+                    <Label>Upload Image File</Label>
+                    <div className="flex gap-2">
+                      <label className="flex-1 cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => e.target.files?.[0] && handleUploadSlide(e.target.files[0])}
+                          disabled={uploadingSlide}
+                        />
+                        <div className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                          <span className="flex items-center gap-2">
+                            <Upload className="h-4 w-4" />
+                            {uploadingSlide ? "Uploading..." : "Choose image to upload..."}
+                          </span>
+                        </div>
+                      </label>
+                      {uploadingSlide && <Loader2 className="h-10 w-10 animate-spin text-primary" />}
+                    </div>
+                  </div>
+
+                  <div className="text-center font-medium text-muted-foreground py-2 sm:py-0">OR</div>
+
+                  {/* Custom URL */}
+                  <div className="flex-[1.5] space-y-2">
+                    <Label htmlFor="customSlideUrl">Paste Image URL</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="customSlideUrl"
+                        placeholder="https://example.com/image.jpg"
+                        value={customSlideUrl}
+                        onChange={(e) => setCustomSlideUrl(e.target.value)}
+                      />
+                      <Button onClick={handleAddCustomSlideUrl} disabled={!customSlideUrl.trim()}>
+                        Add URL
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Current Slides Grid */}
+          <div>
+            <h3 className="font-serif text-xl font-semibold mb-4 text-foreground">Current Background Slides</h3>
+            {heroSlidesLoading ? (
+              <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+            ) : (
+              <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {heroSlides.map((slide, index) => (
+                  <Card key={slide.id} className="relative overflow-hidden group">
+                    <div className="aspect-[16/10] bg-muted relative">
+                      <img src={slide.image_url} alt="" className="h-full w-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="icon" variant="destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Background Image</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to remove this image from the slideshow?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteSlide(slide.id)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-card border-t flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">Slide #{index + 1}</span>
+                      <a href={slide.image_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+                        View Full Image
+                      </a>
+                    </div>
+                  </Card>
+                ))}
+
+                {heroSlides.length === 0 && (
+                  <div className="col-span-full py-12 text-center border rounded-lg bg-card text-muted-foreground">
+                    <Image className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
+                    <p className="font-medium">No custom background images found.</p>
+                    <p className="text-sm">The homepage is currently falling back to default leather art pictures.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>
