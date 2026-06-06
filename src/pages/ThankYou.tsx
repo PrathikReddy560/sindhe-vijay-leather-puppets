@@ -11,7 +11,7 @@ const ThankYou = () => {
   const shareText = encodeURIComponent(
     "I just ordered a handcrafted leather puppet from Sindhe Vijay! Supporting traditional Thogalu Gombe artisans from Karnataka 🎭"
   );
-  const shareUrl = encodeURIComponent("https://sindhe-vijay-leather-puppets.lovable.app");
+  const shareUrl = encodeURIComponent(window.location.origin);
 
   return (
     <div className="flex min-h-[70vh] items-center py-12">

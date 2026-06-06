@@ -94,15 +94,36 @@ const Checkout = () => {
 
         if (orderError) throw orderError;
 
-        // Save order items
-        const orderItems = items.map(({ product, quantity }) => ({
-          order_id: order.id,
-          product_id: product.id,
-          product_name: product.name,
-          product_image: product.images.day,
-          quantity,
-          price: product.price,
-        }));
+        // Fetch matching product UUIDs from database by their slugs
+        const slugs = items.map(({ product }) => product.id);
+        const { data: dbProducts, error: productsError } = await supabase
+          .from("products")
+          .select("id, slug")
+          .in("slug", slugs);
+
+        if (productsError) throw productsError;
+
+        // Map slug to UUID
+        const idMap: Record<string, string> = {};
+        dbProducts?.forEach((p) => {
+          idMap[p.slug] = p.id;
+        });
+
+        // Save order items using the matched UUIDs
+        const orderItems = items.map(({ product, quantity }) => {
+          const dbId = idMap[product.id];
+          if (!dbId) {
+            throw new Error(`Product "${product.name}" was not found in the database.`);
+          }
+          return {
+            order_id: order.id,
+            product_id: dbId,
+            product_name: product.name,
+            product_image: product.images.day,
+            quantity,
+            price: product.price,
+          };
+        });
 
         const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
         if (itemsError) throw itemsError;
