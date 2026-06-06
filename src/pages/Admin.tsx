@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, Upload, Shield, Loader2, Package, MessageCircle, Mail, Image } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Shield, Loader2, Package, MessageCircle, Mail, Image, Video, BookOpen, Calendar, Award } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -30,6 +30,7 @@ const emptyProduct = {
   description: "",
   long_description: "",
   price: 0,
+  discount_price: 0,
   category: "lamps",
   inventory_tag: "in-stock" as const,
   image_day: "",
@@ -78,7 +79,8 @@ const Admin = () => {
         .insert({
           name: newCategoryName.trim(),
           slug: newCategorySlug.trim().toLowerCase(),
-          display_order: nextOrder
+          display_order: nextOrder,
+          image_url: newCategoryImage.trim() || null
         });
 
       if (error) throw error;
@@ -86,6 +88,7 @@ const Admin = () => {
       toast({ title: "Category added successfully" });
       setNewCategoryName("");
       setNewCategorySlug("");
+      setNewCategoryImage("");
       queryClient.invalidateQueries({ queryKey: ["categories"] });
     } catch (err: any) {
       toast({ title: "Error adding category", description: err.message, variant: "destructive" });
@@ -113,6 +116,295 @@ const Admin = () => {
   const [heroSlidesLoading, setHeroSlidesLoading] = useState(false);
   const [uploadingSlide, setUploadingSlide] = useState(false);
   const [customSlideUrl, setCustomSlideUrl] = useState("");
+
+  // Category image state
+  const [newCategoryImage, setNewCategoryImage] = useState("");
+  const [uploadingCategoryImg, setUploadingCategoryImg] = useState(false);
+
+  // Videos state
+  const [videos, setVideos] = useState<any[]>([]);
+  const [videosLoading, setVideosLoading] = useState(false);
+  const [newVideoUrl, setNewVideoUrl] = useState("");
+  const [newVideoTitle, setNewVideoTitle] = useState("");
+  const [savingVideo, setSavingVideo] = useState(false);
+
+  // Stories state
+  const [stories, setStories] = useState<any[]>([]);
+  const [storiesLoading, setStoriesLoading] = useState(false);
+  const [newStoryTitle, setNewStoryTitle] = useState("");
+  const [newStoryText, setNewStoryText] = useState("");
+  const [newStoryImage, setNewStoryImage] = useState("");
+  const [uploadingStoryImg, setUploadingStoryImg] = useState(false);
+  const [savingStory, setSavingStory] = useState(false);
+
+  // Events state
+  const [eventsList, setEventsList] = useState<any[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState("");
+  const [newEventDesc, setNewEventDesc] = useState("");
+  const [newEventLocation, setNewEventLocation] = useState("");
+  const [newEventStartDate, setNewEventStartDate] = useState("");
+  const [newEventEndDate, setNewEventEndDate] = useState("");
+  const [newEventStallNo, setNewEventStallNo] = useState("");
+  const [newEventImage, setNewEventImage] = useState("");
+  const [uploadingEventImg, setUploadingEventImg] = useState(false);
+  const [savingEvent, setSavingEvent] = useState(false);
+
+  // Achievements state
+  const [achievementsList, setAchievementsList] = useState<any[]>([]);
+  const [achievementsLoading, setAchievementsLoading] = useState(false);
+  const [newAchTitle, setNewAchTitle] = useState("");
+  const [newAchDesc, setNewAchDesc] = useState("");
+  const [newAchImage, setNewAchImage] = useState("");
+  const [uploadingAchImg, setUploadingAchImg] = useState(false);
+  const [savingAch, setSavingAch] = useState(false);
+
+  const handleUploadCategoryImg = async (file: File) => {
+    setUploadingCategoryImg(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `categories/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("product-images").upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+      setNewCategoryImage(publicUrl);
+      toast({ title: "Category image uploaded" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingCategoryImg(false);
+    }
+  };
+
+  const handleUploadStoryImg = async (file: File) => {
+    setUploadingStoryImg(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `stories/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("product-images").upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+      setNewStoryImage(publicUrl);
+      toast({ title: "Story image uploaded" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingStoryImg(false);
+    }
+  };
+
+  const handleUploadEventImg = async (file: File) => {
+    setUploadingEventImg(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `events/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("product-images").upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+      setNewEventImage(publicUrl);
+      toast({ title: "Event image uploaded" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingEventImg(false);
+    }
+  };
+
+  const handleUploadAchImg = async (file: File) => {
+    setUploadingAchImg(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `achievements/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("product-images").upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+      setNewAchImage(publicUrl);
+      toast({ title: "Achievement image uploaded" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingAchImg(false);
+    }
+  };
+
+  const fetchVideos = async () => {
+    setVideosLoading(true);
+    const { data, error } = await supabase.from("showcase_videos" as any).select("*").order("created_at", { ascending: false });
+    if (!error && data) setVideos(data);
+    setVideosLoading(false);
+  };
+
+  const handleAddVideo = async () => {
+    if (!newVideoUrl.trim()) return;
+    setSavingVideo(true);
+    try {
+      const { error } = await supabase.from("showcase_videos" as any).insert({
+        video_url: newVideoUrl.trim(),
+        title: newVideoTitle.trim() || null
+      });
+      if (error) throw error;
+      toast({ title: "Video added successfully" });
+      setNewVideoUrl("");
+      setNewVideoTitle("");
+      fetchVideos();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingVideo(false);
+    }
+  };
+
+  const handleDeleteVideo = async (id: string) => {
+    try {
+      const { error } = await supabase.from("showcase_videos" as any).delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Video deleted" });
+      fetchVideos();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const fetchStories = async () => {
+    setStoriesLoading(true);
+    const { data, error } = await supabase.from("art_stories" as any).select("*").order("created_at", { ascending: false });
+    if (!error && data) setStories(data);
+    setStoriesLoading(false);
+  };
+
+  const handleAddStory = async () => {
+    if (!newStoryTitle.trim() || !newStoryText.trim() || !newStoryImage.trim()) {
+      toast({ title: "Error", description: "Title, Story text, and Image are required", variant: "destructive" });
+      return;
+    }
+    setSavingStory(true);
+    try {
+      const { error } = await supabase.from("art_stories" as any).insert({
+        title: newStoryTitle.trim(),
+        story: newStoryText.trim(),
+        image_url: newStoryImage.trim()
+      });
+      if (error) throw error;
+      toast({ title: "Story added successfully" });
+      setNewStoryTitle("");
+      setNewStoryText("");
+      setNewStoryImage("");
+      fetchStories();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingStory(false);
+    }
+  };
+
+  const handleDeleteStory = async (id: string) => {
+    try {
+      const { error } = await supabase.from("art_stories" as any).delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Story deleted" });
+      fetchStories();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const fetchEvents = async () => {
+    setEventsLoading(true);
+    const { data, error } = await supabase.from("events" as any).select("*").order("start_date", { ascending: true });
+    if (!error && data) setEventsList(data);
+    setEventsLoading(false);
+  };
+
+  const handleAddEvent = async () => {
+    if (!newEventTitle.trim() || !newEventDesc.trim() || !newEventLocation.trim() || !newEventStartDate || !newEventEndDate) {
+      toast({ title: "Error", description: "Title, Description, Location, and Dates are required", variant: "destructive" });
+      return;
+    }
+    setSavingEvent(true);
+    try {
+      const { error } = await supabase.from("events" as any).insert({
+        title: newEventTitle.trim(),
+        description: newEventDesc.trim(),
+        location: newEventLocation.trim(),
+        start_date: newEventStartDate,
+        end_date: newEventEndDate,
+        stall_no: newEventStallNo.trim() || null,
+        image_url: newEventImage.trim() || null
+      });
+      if (error) throw error;
+      toast({ title: "Event added successfully" });
+      setNewEventTitle("");
+      setNewEventDesc("");
+      setNewEventLocation("");
+      setNewEventStartDate("");
+      setNewEventEndDate("");
+      setNewEventStallNo("");
+      setNewEventImage("");
+      fetchEvents();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingEvent(false);
+    }
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    try {
+      const { error } = await supabase.from("events" as any).delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Event deleted" });
+      fetchEvents();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const fetchAchievements = async () => {
+    setAchievementsLoading(true);
+    const { data, error } = await supabase.from("achievements" as any).select("*").order("created_at", { ascending: false });
+    if (!error && data) setAchievementsList(data);
+    setAchievementsLoading(false);
+  };
+
+  const handleAddAchievement = async () => {
+    if (!newAchTitle.trim() || !newAchDesc.trim() || !newAchImage.trim()) {
+      toast({ title: "Error", description: "Title, Description, and Image are required", variant: "destructive" });
+      return;
+    }
+    setSavingAch(true);
+    try {
+      const { error } = await supabase.from("achievements" as any).insert({
+        title: newAchTitle.trim(),
+        description: newAchDesc.trim(),
+        image_url: newAchImage.trim()
+      });
+      if (error) throw error;
+      toast({ title: "Achievement added successfully" });
+      setNewAchTitle("");
+      setNewAchDesc("");
+      setNewAchImage("");
+      fetchAchievements();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingAch(false);
+    }
+  };
+
+  const handleDeleteAchievement = async (id: string) => {
+    try {
+      const { error } = await supabase.from("achievements" as any).delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Achievement deleted" });
+      fetchAchievements();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
 
   const fetchOrders = async () => {
     setOrdersLoading(true);
@@ -189,8 +481,14 @@ const Admin = () => {
   };
 
   useEffect(() => {
-    if (isAdmin && activeTab === "orders") fetchOrders();
-    if (isAdmin && activeTab === "backgrounds") fetchHeroSlides();
+    if (isAdmin) {
+      if (activeTab === "orders") fetchOrders();
+      if (activeTab === "backgrounds") fetchHeroSlides();
+      if (activeTab === "videos") fetchVideos();
+      if (activeTab === "stories") fetchStories();
+      if (activeTab === "events_admin") fetchEvents();
+      if (activeTab === "achievements_admin") fetchAchievements();
+    }
   }, [isAdmin, activeTab]);
 
   const getWhatsAppMessage = (order: any, newStatus: string) => {
@@ -329,6 +627,7 @@ const Admin = () => {
         description: editingProduct.description,
         long_description: editingProduct.long_description,
         price: editingProduct.price,
+        discount_price: editingProduct.discount_price ? editingProduct.discount_price : null,
         category: editingProduct.category,
         inventory_tag: editingProduct.inventory_tag,
         image_day: editingProduct.image_day,
@@ -375,6 +674,7 @@ const Admin = () => {
       description: p.description,
       long_description: p.long_description,
       price: p.price,
+      discount_price: p.discount_price || 0,
       category: p.category as typeof emptyProduct.category,
       inventory_tag: p.inventory_tag as typeof emptyProduct.inventory_tag,
       image_day: p.image_day,
@@ -403,16 +703,28 @@ const Admin = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex-wrap h-auto gap-1 bg-muted/50 p-1.5 rounded-lg">
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="orders" className="gap-2">
             <Package className="h-4 w-4" /> Orders
           </TabsTrigger>
           <TabsTrigger value="backgrounds" className="gap-2">
-            <Image className="h-4 w-4" /> Hero Backgrounds
+            <Image className="h-4 w-4" /> Backgrounds
           </TabsTrigger>
           <TabsTrigger value="categories" className="gap-2">
             <Plus className="h-4 w-4" /> Categories
+          </TabsTrigger>
+          <TabsTrigger value="videos" className="gap-2">
+            <Video className="h-4 w-4" /> Videos
+          </TabsTrigger>
+          <TabsTrigger value="stories" className="gap-2">
+            <BookOpen className="h-4 w-4" /> Stories
+          </TabsTrigger>
+          <TabsTrigger value="events_admin" className="gap-2">
+            <Calendar className="h-4 w-4" /> Events
+          </TabsTrigger>
+          <TabsTrigger value="achievements_admin" className="gap-2">
+            <Award className="h-4 w-4" /> Achievements
           </TabsTrigger>
         </TabsList>
 
@@ -452,10 +764,14 @@ const Admin = () => {
                     <Textarea id="longDesc" rows={4} value={editingProduct.long_description} onChange={(e) => setEditingProduct((p) => ({ ...p, long_description: e.target.value }))} />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-4 gap-3">
                     <div className="space-y-2">
                       <Label htmlFor="price">Price (₹) *</Label>
                       <Input id="price" type="number" value={editingProduct.price} onChange={(e) => setEditingProduct((p) => ({ ...p, price: parseInt(e.target.value) || 0 }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="discount_price">Discount Price (₹)</Label>
+                      <Input id="discount_price" type="number" value={editingProduct.discount_price || ""} onChange={(e) => setEditingProduct((p) => ({ ...p, discount_price: parseInt(e.target.value) || 0 }))} placeholder="Optional" />
                     </div>
                     <div className="space-y-2">
                       <Label>Category</Label>
@@ -966,6 +1282,31 @@ const Admin = () => {
                     onChange={(e) => setNewCategorySlug(e.target.value)}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Category Image</Label>
+                  {newCategoryImage && (
+                    <img src={newCategoryImage} alt="Preview" className="h-24 w-full rounded-md border object-cover bg-muted" />
+                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Image URL"
+                      value={newCategoryImage}
+                      onChange={(e) => setNewCategoryImage(e.target.value)}
+                      className="flex-1"
+                    />
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && handleUploadCategoryImg(e.target.files[0])}
+                      />
+                      <Button type="button" variant="outline" size="icon" disabled={uploadingCategoryImg} asChild>
+                        <span>{uploadingCategoryImg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}</span>
+                      </Button>
+                    </label>
+                  </div>
+                </div>
                 <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={handleAddCategory} disabled={addingCategory}>
                   {addingCategory && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Create Category
@@ -984,6 +1325,7 @@ const Admin = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Order</TableHead>
+                        <TableHead>Thumbnail</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Slug</TableHead>
                       </TableRow>
@@ -992,18 +1334,416 @@ const Admin = () => {
                       {(dbCategories || []).map((cat, index) => (
                         <TableRow key={cat.id || cat.slug}>
                           <TableCell className="font-medium">{cat.display_order || (index + 1)}</TableCell>
+                          <TableCell>
+                            {cat.image_url ? (
+                              <img src={cat.image_url} alt={cat.name} className="h-10 w-10 rounded-md object-cover border" />
+                            ) : (
+                              <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center text-[10px] text-muted-foreground">No Image</div>
+                            )}
+                          </TableCell>
                           <TableCell className="font-medium">{cat.name}</TableCell>
                           <TableCell className="font-mono text-xs">{cat.slug}</TableCell>
                         </TableRow>
                       ))}
                       {(!dbCategories || dbCategories.length === 0) && (
                         <TableRow>
-                          <TableCell colSpan={3} className="py-10 text-center text-muted-foreground">No categories found</TableCell>
+                          <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">No categories found</TableCell>
                         </TableRow>
                       )}
                     </TableBody>
                   </Table>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="videos">
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="md:col-span-1">
+              <CardHeader>
+                <CardTitle className="font-serif">Add Showcase Video</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="videoTitle">Video Title</Label>
+                  <Input
+                    id="videoTitle"
+                    placeholder="e.g. Traditional Shadow Puppetry Process"
+                    value={newVideoTitle}
+                    onChange={(e) => setNewVideoTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="videoUrl">Video URL (YouTube Embed / MP4)</Label>
+                  <Input
+                    id="videoUrl"
+                    placeholder="e.g. https://www.youtube.com/embed/dQw4w9WgXcQ"
+                    value={newVideoUrl}
+                    onChange={(e) => setNewVideoUrl(e.target.value)}
+                  />
+                  <p className="text-[10px] text-muted-foreground">Please use embeddable URLs for YouTube videos (e.g. contain `/embed/`).</p>
+                </div>
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={handleAddVideo} disabled={savingVideo}>
+                  {savingVideo && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Add Video
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="font-serif">Current Showcase Videos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {videosLoading ? (
+                  <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {videos.map((vid) => (
+                      <Card key={vid.id} className="overflow-hidden">
+                        <div className="aspect-video bg-muted relative">
+                          <iframe
+                            src={vid.video_url}
+                            title={vid.title || "Showcase Video"}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                        <div className="p-4 flex items-center justify-between gap-2">
+                          <span className="font-serif text-sm font-semibold truncate flex-1">{vid.title || "Untitled Video"}</span>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteVideo(vid.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                    {videos.length === 0 && (
+                      <div className="col-span-full py-10 text-center text-muted-foreground border border-dashed rounded-lg">
+                        No showcase videos added yet.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="stories">
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="md:col-span-1">
+              <CardHeader>
+                <CardTitle className="font-serif">Add Art Story</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="storyTitle">Story Title</Label>
+                  <Input
+                    id="storyTitle"
+                    placeholder="e.g. Lord Ganesha's Creation"
+                    value={newStoryTitle}
+                    onChange={(e) => setNewStoryTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="storyText">The Story & Significance</Label>
+                  <Textarea
+                    id="storyText"
+                    rows={4}
+                    placeholder="Describe the folklore, story depiction, or cultural significance of this art motif..."
+                    value={newStoryText}
+                    onChange={(e) => setNewStoryText(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Story Image</Label>
+                  {newStoryImage && (
+                    <img src={newStoryImage} alt="Preview" className="h-32 w-full rounded-md border object-cover bg-muted" />
+                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Image URL"
+                      value={newStoryImage}
+                      onChange={(e) => setNewStoryImage(e.target.value)}
+                      className="flex-1"
+                    />
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && handleUploadStoryImg(e.target.files[0])}
+                      />
+                      <Button type="button" variant="outline" size="icon" disabled={uploadingStoryImg} asChild>
+                        <span>{uploadingStoryImg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}</span>
+                      </Button>
+                    </label>
+                  </div>
+                </div>
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={handleAddStory} disabled={savingStory}>
+                  {savingStory && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Add Story
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="font-serif">Current Art Stories</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {storiesLoading ? (
+                  <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {stories.map((st) => (
+                      <Card key={st.id} className="overflow-hidden flex flex-col justify-between">
+                        <div>
+                          <div className="h-40 bg-muted overflow-hidden">
+                            <img src={st.image_url} alt={st.title} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="p-4">
+                            <h4 className="font-serif text-base font-bold mb-2">{st.title}</h4>
+                            <p className="text-xs text-muted-foreground line-clamp-3">{st.story}</p>
+                          </div>
+                        </div>
+                        <div className="p-4 border-t flex justify-end">
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteStory(st.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                    {stories.length === 0 && (
+                      <div className="col-span-full py-10 text-center text-muted-foreground border border-dashed rounded-lg">
+                        No folklore or art stories added yet.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="events_admin">
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="md:col-span-1">
+              <CardHeader>
+                <CardTitle className="font-serif">Add Stall Event</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="evtTitle">Event / Exhibition Title</Label>
+                  <Input
+                    id="evtTitle"
+                    placeholder="e.g. Dastkar Bazaar 2026"
+                    value={newEventTitle}
+                    onChange={(e) => setNewEventTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="evtDesc">Short Details</Label>
+                  <Textarea
+                    id="evtDesc"
+                    rows={2}
+                    placeholder="Describe showcase or timings..."
+                    value={newEventDesc}
+                    onChange={(e) => setNewEventDesc(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="evtLocation">Location / City</Label>
+                  <Input
+                    id="evtLocation"
+                    placeholder="e.g. Gitanjali Exhibition Hall, Bangalore"
+                    value={newEventLocation}
+                    onChange={(e) => setNewEventLocation(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="evtStart">Start Date</Label>
+                    <Input id="evtStart" type="date" value={newEventStartDate} onChange={(e) => setNewEventStartDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="evtEnd">End Date</Label>
+                    <Input id="evtEnd" type="date" value={newEventEndDate} onChange={(e) => setNewEventEndDate(e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="evtStall">Stall Number (optional)</Label>
+                  <Input id="evtStall" placeholder="e.g. Stall #42" value={newEventStallNo} onChange={(e) => setNewEventStallNo(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Event Flyer / Banner (optional)</Label>
+                  {newEventImage && (
+                    <img src={newEventImage} alt="Preview" className="h-24 w-full rounded-md border object-cover bg-muted" />
+                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Image URL"
+                      value={newEventImage}
+                      onChange={(e) => setNewEventImage(e.target.value)}
+                      className="flex-1"
+                    />
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && handleUploadEventImg(e.target.files[0])}
+                      />
+                      <Button type="button" variant="outline" size="icon" disabled={uploadingEventImg} asChild>
+                        <span>{uploadingEventImg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}</span>
+                      </Button>
+                    </label>
+                  </div>
+                </div>
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={handleAddEvent} disabled={savingEvent}>
+                  {savingEvent && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Add Event
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="font-serif">Current Events</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {eventsLoading ? (
+                  <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {eventsList.map((ev) => (
+                      <Card key={ev.id} className="overflow-hidden flex flex-col justify-between">
+                        <div>
+                          {ev.image_url && (
+                            <div className="h-32 bg-muted overflow-hidden">
+                              <img src={ev.image_url} alt={ev.title} className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                          <div className="p-4">
+                            <h4 className="font-serif text-base font-bold mb-1">{ev.title}</h4>
+                            <p className="text-xs text-amber-600 font-semibold mb-2">{ev.start_date} to {ev.end_date}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-2">{ev.description}</p>
+                            <p className="text-xs text-muted-foreground mt-2 font-medium">📍 {ev.location} {ev.stall_no && `(Stall: ${ev.stall_no})`}</p>
+                          </div>
+                        </div>
+                        <div className="p-4 border-t flex justify-end">
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteEvent(ev.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                    {eventsList.length === 0 && (
+                      <div className="col-span-full py-10 text-center text-muted-foreground border border-dashed rounded-lg">
+                        No events or exhibitions listed.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="achievements_admin">
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="md:col-span-1">
+              <CardHeader>
+                <CardTitle className="font-serif">Add Achievement / Award</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="achTitle">Award Title</Label>
+                  <Input
+                    id="achTitle"
+                    placeholder="e.g. State Handicraft Award 2025"
+                    value={newAchTitle}
+                    onChange={(e) => setNewAchTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="achDesc">Description & Honor</Label>
+                  <Textarea
+                    id="achDesc"
+                    rows={4}
+                    placeholder="Describe who presented the award, when, and significance..."
+                    value={newAchDesc}
+                    onChange={(e) => setNewAchDesc(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Award Photo / Certificate</Label>
+                  {newAchImage && (
+                    <img src={newAchImage} alt="Preview" className="h-32 w-full rounded-md border object-cover bg-muted" />
+                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Image URL"
+                      value={newAchImage}
+                      onChange={(e) => setNewAchImage(e.target.value)}
+                      className="flex-1"
+                    />
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && handleUploadAchImg(e.target.files[0])}
+                      />
+                      <Button type="button" variant="outline" size="icon" disabled={uploadingAchImg} asChild>
+                        <span>{uploadingAchImg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}</span>
+                      </Button>
+                    </label>
+                  </div>
+                </div>
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={handleAddAchievement} disabled={savingAch}>
+                  {savingAch && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Add Achievement
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="font-serif">Current Achievements</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {achievementsLoading ? (
+                  <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {achievementsList.map((ach) => (
+                      <Card key={ach.id} className="overflow-hidden flex flex-col justify-between">
+                        <div>
+                          <div className="h-40 bg-muted overflow-hidden">
+                            <img src={ach.image_url} alt={ach.title} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="p-4">
+                            <h4 className="font-serif text-base font-bold mb-2">{ach.title}</h4>
+                            <p className="text-xs text-muted-foreground line-clamp-3">{ach.description}</p>
+                          </div>
+                        </div>
+                        <div className="p-4 border-t flex justify-end">
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteAchievement(ach.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                    {achievementsList.length === 0 && (
+                      <div className="col-span-full py-10 text-center text-muted-foreground border border-dashed rounded-lg">
+                        No achievements listed yet.
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 const sizeFilters = [
   { value: "all", label: "All Sizes" },
@@ -56,8 +57,8 @@ const Shop = () => {
     display = display.filter((p) => p.price >= priceRange[0] && p.price <= priceRange[1]);
 
     // Size filter (matches dimension string)
-    if (sizeFilter !== "all") {
-      display = display.filter((p) => p.dimensions?.startsWith(sizeFilter));
+    if (sizeFilter !== "all" && sizeFilter.trim() !== "") {
+      display = display.filter((p) => p.dimensions?.toLowerCase().includes(sizeFilter.toLowerCase()));
     }
 
     // Sort
@@ -180,23 +181,31 @@ const Shop = () => {
               </div>
 
               {/* Size filter (for lamps) */}
-              {(activeCategory === "all" || activeCategory === "hanging-lamps" || activeCategory === "lamps") && (
-                <div className="space-y-3">
-                  <label className="text-sm font-medium text-foreground">Lamp Size</label>
-                  <div className="flex flex-wrap gap-2">
-                    {sizeFilters.map((s) => (
-                      <Button
-                        key={s.value}
-                        variant={sizeFilter === s.value ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSizeFilter(s.value)}
-                      >
-                        {s.label}
-                      </Button>
-                    ))}
-                  </div>
+              {/* Size filter (for all categories) */}
+              <div className="space-y-3 sm:col-span-2">
+                <label className="text-sm font-medium text-foreground">Filter by Size (Preset or Custom)</label>
+                <div className="flex flex-wrap gap-2">
+                  {sizeFilters.map((s) => (
+                    <Button
+                      key={s.value}
+                      variant={sizeFilter === s.value ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSizeFilter(s.value)}
+                    >
+                      {s.label}
+                    </Button>
+                  ))}
                 </div>
-              )}
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">Or Custom Size:</span>
+                  <Input
+                    placeholder="e.g. 18, 30 x 40"
+                    value={sizeFilters.some(s => s.value === sizeFilter) ? "" : sizeFilter}
+                    onChange={(e) => setSizeFilter(e.target.value || "all")}
+                    className="h-8 max-w-[200px]"
+                  />
+                </div>
+              </div>
             </div>
           </motion.div>
         )}

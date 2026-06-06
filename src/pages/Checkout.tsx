@@ -146,7 +146,7 @@ const Checkout = () => {
     }
   };
 
-  const shippingCost = totalPrice >= 5000 ? 0 : 200;
+  const shippingCost = totalPrice >= 50000 ? 0 : 500;
   const grandTotal = totalPrice + shippingCost;
 
   return (
@@ -293,7 +293,7 @@ const Checkout = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatPrice(totalPrice)}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>{shippingCost === 0 ? "Free" : formatPrice(shippingCost)}</span></div>
-                {shippingCost === 0 && <p className="text-xs text-primary">Free shipping on orders above ₹5,000!</p>}
+                {shippingCost === 0 && <p className="text-xs text-primary">Free shipping on orders above ₹50,000!</p>}
               </div>
               <Separator className="my-4" />
               <div className="flex justify-between text-lg font-bold">

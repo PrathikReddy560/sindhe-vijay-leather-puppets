@@ -8,6 +8,7 @@ export interface Product {
   description: string;
   longDescription: string;
   price: number;
+  discountPrice?: number;
   category: ProductCategory;
   inventoryTag: InventoryTag;
   images: { day: string; night: string };

@@ -1,25 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export interface DbCategory {
+export interface ArtStory {
   id: string;
-  slug: string;
-  name: string;
-  display_order: number;
-  image_url?: string | null;
+  image_url: string;
+  title: string;
+  story: string;
   created_at: string;
 }
 
-export const useCategories = () => {
+export const useArtStories = () => {
   return useQuery({
-    queryKey: ["categories"],
+    queryKey: ["art_stories"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("categories" as any)
+        .from("art_stories" as any)
         .select("*")
-        .order("display_order", { ascending: true });
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as DbCategory[];
+      return data as ArtStory[];
     },
   });
 };

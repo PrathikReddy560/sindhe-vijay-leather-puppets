@@ -1,25 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export interface DbCategory {
+export interface ShowcaseVideo {
   id: string;
-  slug: string;
-  name: string;
-  display_order: number;
-  image_url?: string | null;
+  video_url: string;
+  title: string | null;
   created_at: string;
 }
 
-export const useCategories = () => {
+export const useShowcaseVideos = () => {
   return useQuery({
-    queryKey: ["categories"],
+    queryKey: ["showcase_videos"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("categories" as any)
+        .from("showcase_videos" as any)
         .select("*")
-        .order("display_order", { ascending: true });
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as DbCategory[];
+      return data as ShowcaseVideo[];
     },
   });
 };

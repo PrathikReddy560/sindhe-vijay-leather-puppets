@@ -99,7 +99,19 @@ const ProductDetail = () => {
           >
             <Badge variant={tag.variant}>{tag.label}</Badge>
             <h1 className="mt-3 font-serif text-3xl font-bold text-foreground md:text-4xl">{product.name}</h1>
-            <p className="mt-2 text-3xl font-bold text-primary">{formatPrice(product.price)}</p>
+            <div className="mt-2 flex items-center gap-3">
+              {product.discountPrice ? (
+                <>
+                  <span className="text-3xl font-bold text-primary">{formatPrice(product.discountPrice)}</span>
+                  <span className="text-lg text-muted-foreground line-through">{formatPrice(product.price)}</span>
+                  <Badge variant="secondary" className="bg-red-500/10 text-red-500 hover:bg-red-500/20 text-xs font-bold border-none px-2 py-0.5">
+                    {Math.round(((product.price - product.discountPrice) / product.price) * 100)}% OFF
+                  </Badge>
+                </>
+              ) : (
+                <span className="text-3xl font-bold text-primary">{formatPrice(product.price)}</span>
+              )}
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">Inclusive of all taxes · Free shipping across India</p>
 
             <Separator className="my-6" />

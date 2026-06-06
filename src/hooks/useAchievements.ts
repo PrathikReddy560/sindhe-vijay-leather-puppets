@@ -1,25 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export interface DbCategory {
+export interface AchievementItem {
   id: string;
-  slug: string;
-  name: string;
-  display_order: number;
-  image_url?: string | null;
+  title: string;
+  description: string;
+  image_url: string;
   created_at: string;
 }
 
-export const useCategories = () => {
+export const useAchievements = () => {
   return useQuery({
-    queryKey: ["categories"],
+    queryKey: ["achievements"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("categories" as any)
+        .from("achievements" as any)
         .select("*")
-        .order("display_order", { ascending: true });
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as DbCategory[];
+      return data as AchievementItem[];
     },
   });
 };

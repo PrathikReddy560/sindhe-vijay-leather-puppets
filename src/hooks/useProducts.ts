@@ -8,7 +8,8 @@ export interface DbProduct {
   description: string;
   long_description: string;
   price: number;
-  category: "big-paintings" | "medium-paintings" | "hanging-lamps";
+  discount_price: number | null;
+  category: string;
   inventory_tag: "in-stock" | "made-to-order" | "limited-edition";
   image_day: string;
   image_night: string | null;
@@ -72,6 +73,7 @@ export const toDisplayProduct = (p: DbProduct) => ({
   description: p.description,
   longDescription: p.long_description,
   price: p.price,
+  discountPrice: p.discount_price || undefined,
   category: p.category,
   inventoryTag: p.inventory_tag,
   images: { day: p.image_day, night: p.image_night || p.image_day },

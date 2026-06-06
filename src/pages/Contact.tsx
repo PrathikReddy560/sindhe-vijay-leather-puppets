@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { MessageCircle, Mail, MapPin, Phone } from "lucide-react";
+import { MessageCircle, Mail, MapPin, Phone, Instagram } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -128,6 +128,12 @@ const Contact = () => {
               <div className="flex gap-3 text-sm text-muted-foreground">
                 <Mail className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
                 <span>sindhevijayleatherpuppets@gmail.com</span>
+              </div>
+              <div className="flex gap-3 text-sm text-muted-foreground">
+                <Instagram className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                <a href="https://instagram.com/sindhe_vijay_leather_puppets" target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-primary transition-colors">
+                  @sindhe_vijay_leather_puppets
+                </a>
               </div>
             </div>
           </motion.div>

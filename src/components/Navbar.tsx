@@ -8,10 +8,13 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { Badge } from "@/components/ui/badge";
 
 const navLinks = [
-{ to: "/", label: "Home" },
-{ to: "/shop", label: "Shop" },
-{ to: "/heritage", label: "Our Heritage" },
-{ to: "/contact", label: "Contact" }];
+  { to: "/", label: "Home" },
+  { to: "/shop", label: "Shop" },
+  { to: "/heritage", label: "Our Heritage" },
+  { to: "/events", label: "Events" },
+  { to: "/achievements", label: "Achievements" },
+  { to: "/contact", label: "Contact" }
+];
 
 
 const Navbar = () => {
@@ -24,8 +27,8 @@ const Navbar = () => {
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="container flex h-16 items-center justify-between md:h-20">
-        <Link to="/" className="flex items-center gap-2">
-          <img alt="Sindhe Vijay Leather Puppets" className="h-10 w-auto md:h-12" src="/lovable-uploads/a59db8b9-c4c9-43d7-9346-e95ceed37723.png" />
+        <Link to="/" className="flex items-center gap-2 py-1">
+          <img alt="Sindhe Vijay Leather Puppets" className="h-14 w-auto md:h-18" src="/lovable-uploads/a59db8b9-c4c9-43d7-9346-e95ceed37723.png" />
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">

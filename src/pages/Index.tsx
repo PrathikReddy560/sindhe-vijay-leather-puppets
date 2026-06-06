@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Shield, Award, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import ProductCard from "@/components/ProductCard";
 import { useFeaturedProducts, toDisplayProduct } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
@@ -27,6 +28,8 @@ const Index = () => {
   const featured = featuredDb?.map(toDisplayProduct) || [];
   const [heroBackgrounds, setHeroBackgrounds] = useState<string[]>(defaultBackgrounds);
   const [bgIndex, setBgIndex] = useState(0);
+  const [videos, setVideos] = useState<any[]>([]);
+  const [stories, setStories] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchHeroSlides = async () => {
@@ -44,7 +47,20 @@ const Index = () => {
       }
     };
 
+    const fetchHomeContent = async () => {
+      try {
+        const { data: vids } = await supabase.from("showcase_videos" as any).select("*").order("created_at", { ascending: false });
+        if (vids) setVideos(vids);
+        
+        const { data: storyData } = await supabase.from("art_stories" as any).select("*").order("created_at", { ascending: false });
+        if (storyData) setStories(storyData);
+      } catch (err) {
+        console.error("Error fetching homepage videos/stories:", err);
+      }
+    };
+
     fetchHeroSlides();
+    fetchHomeContent();
   }, []);
 
   useEffect(() => {
@@ -151,11 +167,28 @@ const Index = () => {
             <p className="text-xs font-medium uppercase tracking-[0.3em] text-primary">Collections</p>
             <h2 className="mt-3 font-serif text-3xl font-bold text-foreground md:text-4xl">Browse by Category</h2>
           </div>
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {(dbCategories ? dbCategories.map(c => ({ value: c.slug, label: c.name })) : categories).map((cat, i) => (
-              <motion.div key={cat.value} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.5 }}>
-                <Link to={`/shop?category=${cat.value}`} className="group flex h-40 items-end overflow-hidden rounded-lg bg-muted p-6 transition-shadow hover:shadow-lg">
-                  <span className="font-serif text-lg font-semibold text-foreground group-hover:text-primary transition-colors">{cat.label}</span>
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {(dbCategories || []).map((cat, i) => (
+              <motion.div key={cat.slug} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.5 }}>
+                <Link
+                  to={`/shop?category=${cat.slug}`}
+                  className="group relative flex h-48 items-end overflow-hidden rounded-lg bg-stone-900 p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                >
+                  {cat.image_url ? (
+                    <>
+                      <img
+                        src={cat.image_url}
+                        alt={cat.name}
+                        className="absolute inset-0 h-full w-full object-cover opacity-60 transition-transform duration-500 group-hover:scale-105 group-hover:opacity-75"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent z-10" />
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 to-transparent z-10" />
+                  )}
+                  <span className="relative z-20 font-serif text-lg font-bold text-white group-hover:text-amber-400 transition-colors drop-shadow-md">
+                    {cat.name}
+                  </span>
                 </Link>
               </motion.div>
             ))}
@@ -191,6 +224,67 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Videos Section */}
+      {videos.length > 0 && (
+        <section className="bg-card py-20 border-t">
+          <div className="container">
+            <div className="text-center max-w-2xl mx-auto mb-12">
+              <p className="text-xs font-medium uppercase tracking-[0.3em] text-primary">The Process</p>
+              <h2 className="mt-3 font-serif text-3xl font-bold text-foreground md:text-4xl">Art in Motion</h2>
+              <p className="mt-3 text-muted-foreground text-sm">Watch the master artisans bringing traditional leather shadow puppetry to life.</p>
+            </div>
+            <div className="grid gap-8 md:grid-cols-2">
+              {videos.map((vid) => (
+                <div key={vid.id} className="rounded-lg overflow-hidden border shadow-sm bg-background">
+                  <div className="aspect-video relative">
+                    <iframe
+                      src={vid.video_url}
+                      title={vid.title || "Showcase Video"}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                  {vid.title && (
+                    <div className="p-4 bg-card">
+                      <h3 className="font-serif text-base font-semibold text-foreground">{vid.title}</h3>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Art Stories Section */}
+      {stories.length > 0 && (
+        <section className="py-20 border-t">
+          <div className="container">
+            <div className="text-center max-w-2xl mx-auto mb-12">
+              <p className="text-xs font-medium uppercase tracking-[0.3em] text-primary">Folklore</p>
+              <h2 className="mt-3 font-serif text-3xl font-bold text-foreground md:text-4xl">Stories Behind the Art</h2>
+              <p className="mt-3 text-muted-foreground text-sm">Every leather puppet and motif represents an ancient mythological legend or local folklore.</p>
+            </div>
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {stories.map((story) => (
+                <Card key={story.id} className="overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div>
+                    <div className="h-60 bg-muted overflow-hidden">
+                      <img src={story.image_url} alt={story.title} className="w-full h-full object-cover" />
+                    </div>
+                    <CardContent className="p-6">
+                      <h3 className="font-serif text-xl font-bold mb-3">{story.title}</h3>
+                      <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">{story.story}</p>
+                    </CardContent>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </>
   );
 };

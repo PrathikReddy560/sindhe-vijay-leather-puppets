@@ -33,7 +33,19 @@ const ProductCard = ({ product }: { product: Product }) => {
       <div className="p-4">
         <h3 className="font-serif text-sm font-semibold text-foreground line-clamp-1 md:text-base">{product.name}</h3>
         <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{product.description}</p>
-        <p className="mt-2 text-base font-bold text-primary">{formatPrice(product.price)}</p>
+        <div className="mt-2 flex items-center gap-2">
+          {product.discountPrice ? (
+            <>
+              <span className="text-base font-bold text-primary">{formatPrice(product.discountPrice)}</span>
+              <span className="text-xs text-muted-foreground line-through">{formatPrice(product.price)}</span>
+              <Badge variant="secondary" className="bg-red-500/10 text-red-500 hover:bg-red-500/20 text-[10px] font-bold border-none px-1.5 py-0.5">
+                {Math.round(((product.price - product.discountPrice) / product.price) * 100)}% OFF
+              </Badge>
+            </>
+          ) : (
+            <span className="text-base font-bold text-primary">{formatPrice(product.price)}</span>
+          )}
+        </div>
       </div>
     </Link>
   );

@@ -34,6 +34,9 @@ const Footer = () => (
             <a href="mailto:sindhevijayleatherpuppets@gmail.com" className="transition-colors hover:text-primary">
               sindhevijayleatherpuppets@gmail.com
             </a>
+            <a href="https://instagram.com/sindhe_vijay_leather_puppets" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-primary font-medium">
+              Instagram: @sindhe_vijay_leather_puppets
+            </a>
           </div>
         </div>
       </div>

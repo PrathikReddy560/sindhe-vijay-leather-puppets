@@ -12,6 +12,8 @@ import Index from "./pages/Index";
 import Shop from "./pages/Shop";
 import ProductDetail from "./pages/ProductDetail";
 import Heritage from "./pages/Heritage";
+import Events from "./pages/Events";
+import Achievements from "./pages/Achievements";
 import Contact from "./pages/Contact";
 import Checkout from "./pages/Checkout";
 import ThankYou from "./pages/ThankYou";
@@ -41,6 +43,8 @@ const App = () => (
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/heritage" element={<Heritage />} />
+                <Route path="/events" element={<Events />} />
+                <Route path="/achievements" element={<Achievements />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/thank-you" element={<ThankYou />} />

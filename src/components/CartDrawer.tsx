@@ -41,7 +41,16 @@ const CartDrawer = () => {
                     </div>
                     <div className="flex flex-1 flex-col">
                       <h4 className="font-serif text-sm font-medium text-foreground">{product.name}</h4>
-                      <p className="text-sm font-medium text-primary">{formatPrice(product.price)}</p>
+                      <div className="flex items-center gap-1.5">
+                        {product.discountPrice ? (
+                          <>
+                            <span className="text-sm font-medium text-primary">{formatPrice(product.discountPrice)}</span>
+                            <span className="text-xs text-muted-foreground line-through">{formatPrice(product.price)}</span>
+                          </>
+                        ) : (
+                          <span className="text-sm font-medium text-primary">{formatPrice(product.price)}</span>
+                        )}
+                      </div>
                       <div className="mt-2 flex items-center gap-2">
                         <Button
                           variant="outline"
