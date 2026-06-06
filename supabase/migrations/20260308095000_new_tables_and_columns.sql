@@ -8,15 +8,20 @@ CREATE TABLE IF NOT EXISTS public.categories (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Make sure image_url exists if the table was created previously without it
+ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS image_url TEXT;
+
 -- Enable RLS for categories (if not already enabled)
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access for categories
+DROP POLICY IF EXISTS "Allow public read access for categories" ON public.categories;
 CREATE POLICY "Allow public read access for categories"
   ON public.categories FOR SELECT
   USING (true);
 
 -- Allow admin write access for categories
+DROP POLICY IF EXISTS "Allow admin write access for categories" ON public.categories;
 CREATE POLICY "Allow admin write access for categories"
   ON public.categories FOR ALL
   USING (
@@ -55,10 +60,12 @@ CREATE TABLE IF NOT EXISTS public.showcase_videos (
 
 ALTER TABLE public.showcase_videos ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read access for showcase videos" ON public.showcase_videos;
 CREATE POLICY "Allow public read access for showcase videos"
   ON public.showcase_videos FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Allow admin write access for showcase videos" ON public.showcase_videos;
 CREATE POLICY "Allow admin write access for showcase videos"
   ON public.showcase_videos FOR ALL
   USING (
@@ -80,10 +87,12 @@ CREATE TABLE IF NOT EXISTS public.art_stories (
 
 ALTER TABLE public.art_stories ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read access for art stories" ON public.art_stories;
 CREATE POLICY "Allow public read access for art stories"
   ON public.art_stories FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Allow admin write access for art stories" ON public.art_stories;
 CREATE POLICY "Allow admin write access for art stories"
   ON public.art_stories FOR ALL
   USING (
@@ -109,10 +118,12 @@ CREATE TABLE IF NOT EXISTS public.events (
 
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read access for events" ON public.events;
 CREATE POLICY "Allow public read access for events"
   ON public.events FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Allow admin write access for events" ON public.events;
 CREATE POLICY "Allow admin write access for events"
   ON public.events FOR ALL
   USING (
@@ -134,10 +145,12 @@ CREATE TABLE IF NOT EXISTS public.achievements (
 
 ALTER TABLE public.achievements ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read access for achievements" ON public.achievements;
 CREATE POLICY "Allow public read access for achievements"
   ON public.achievements FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Allow admin write access for achievements" ON public.achievements;
 CREATE POLICY "Allow admin write access for achievements"
   ON public.achievements FOR ALL
   USING (
