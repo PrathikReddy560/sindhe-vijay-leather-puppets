@@ -5,7 +5,7 @@ import { ArrowRight, Shield, Award, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import ProductCard from "@/components/ProductCard";
-import { useFeaturedProducts, toDisplayProduct } from "@/hooks/useProducts";
+import { useFeaturedProducts, toDisplayProduct, useProducts } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
 import { categories } from "@/data/products";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,7 @@ const defaultBackgrounds = [
 
 const Index = () => {
   const { data: featuredDb, isLoading } = useFeaturedProducts();
+  const { data: dbProducts } = useProducts();
   const { data: dbCategories } = useCategories();
   const featured = featuredDb?.map(toDisplayProduct) || [];
   const [heroBackgrounds, setHeroBackgrounds] = useState<string[]>(defaultBackgrounds);
@@ -175,7 +176,7 @@ const Index = () => {
                   className="group relative flex h-48 items-end overflow-hidden rounded-lg bg-stone-900 p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                 >
                   {(() => {
-                    const imgUrl = cat.image_url || products?.find((p) => p.category === cat.slug)?.image_day;
+                    const imgUrl = cat.image_url || dbProducts?.find((p) => p.category === cat.slug)?.image_day;
                     return imgUrl ? (
                       <>
                         <img
