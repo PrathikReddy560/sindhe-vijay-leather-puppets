@@ -175,7 +175,7 @@ const Index = () => {
                   className="group relative flex h-48 items-end overflow-hidden rounded-lg bg-stone-900 p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                 >
                   {(() => {
-                    const imgUrl = cat.image_url || products?.find((p) => p.category === cat.slug)?.images.day;
+                    const imgUrl = cat.image_url || products?.find((p) => p.category === cat.slug)?.image_day;
                     return imgUrl ? (
                       <>
                         <img
@@ -215,7 +215,7 @@ const Index = () => {
             <div className="mt-10 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
           ) : (
             <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {featured.slice(0, 4).map((product) => (
+              {featured.slice(0, 4).map(toDisplayProduct).map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
