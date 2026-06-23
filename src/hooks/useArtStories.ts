@@ -14,7 +14,7 @@ export const useArtStories = () => {
     queryKey: ["art_stories"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("art_stories" as any)
+        .from("art_stories")
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;

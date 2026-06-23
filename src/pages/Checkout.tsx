@@ -94,29 +94,44 @@ const Checkout = () => {
 
         if (orderError) throw orderError;
 
-        // Fetch matching product UUIDs from database by their slugs
-        const slugs = items.map(({ product }) => product.slug || product.id);
-        const { data: dbProducts, error: productsError } = await supabase
-          .from("products")
-          .select("id, slug")
-          .in("slug", slugs);
-
-        if (productsError) throw productsError;
-
-        // Map slug to UUID
-        const idMap: Record<string, string> = {};
-        dbProducts?.forEach((p) => {
-          idMap[p.slug] = p.id;
+        // Resolve cart products to database UUIDs
+        // Products from the DB already have UUID ids; legacy/local products need slug lookup
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const slugsToLookup: string[] = [];
+        items.forEach(({ product }) => {
+          if (!UUID_REGEX.test(product.id)) {
+            slugsToLookup.push(product.slug || product.id);
+          }
         });
 
-        // Save order items using the matched UUIDs
+        // Only query the DB for slug lookups if there are non-UUID products
+        const idMap: Record<string, string> = {};
+        if (slugsToLookup.length > 0) {
+          const { data: dbProducts, error: productsError } = await supabase
+            .from("products")
+            .select("id, slug")
+            .in("slug", slugsToLookup);
+
+          if (productsError) throw productsError;
+          dbProducts?.forEach((p) => {
+            idMap[p.slug] = p.id;
+          });
+        }
+
+        // Build order items using resolved UUIDs
         const orderItems = items.map(({ product, quantity }) => {
-          const slug = product.slug || product.id;
-          const isUuid = typeof product.id === "string" && product.id.length === 36;
-          const dbId = isUuid ? product.id : idMap[slug];
+          let dbId: string | undefined;
+          if (UUID_REGEX.test(product.id)) {
+            dbId = product.id;
+          } else {
+            const slug = product.slug || product.id;
+            dbId = idMap[slug];
+          }
 
           if (!dbId) {
-            throw new Error(`Product "${product.name}" was not found in the database.`);
+            throw new Error(
+              `Product "${product.name}" (slug: ${product.slug || product.id}) was not found in the database. Please remove it from your cart and re-add it from the shop.`
+            );
           }
           return {
             order_id: order.id,

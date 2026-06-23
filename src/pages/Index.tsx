@@ -35,7 +35,7 @@ const Index = () => {
     const fetchHeroSlides = async () => {
       try {
         const { data, error } = await supabase
-          .from("hero_slides" as any)
+          .from("hero_slides")
           .select("image_url")
           .order("created_at", { ascending: true });
         
@@ -49,10 +49,10 @@ const Index = () => {
 
     const fetchHomeContent = async () => {
       try {
-        const { data: vids } = await supabase.from("showcase_videos" as any).select("*").order("created_at", { ascending: false });
+        const { data: vids } = await supabase.from("showcase_videos").select("*").order("created_at", { ascending: false });
         if (vids) setVideos(vids);
         
-        const { data: storyData } = await supabase.from("art_stories" as any).select("*").order("created_at", { ascending: false });
+        const { data: storyData } = await supabase.from("art_stories").select("*").order("created_at", { ascending: false });
         if (storyData) setStories(storyData);
       } catch (err) {
         console.error("Error fetching homepage videos/stories:", err);
@@ -174,18 +174,21 @@ const Index = () => {
                   to={`/shop?category=${cat.slug}`}
                   className="group relative flex h-48 items-end overflow-hidden rounded-lg bg-stone-900 p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                 >
-                  {cat.image_url ? (
-                    <>
-                      <img
-                        src={cat.image_url}
-                        alt={cat.name}
-                        className="absolute inset-0 h-full w-full object-cover opacity-60 transition-transform duration-500 group-hover:scale-105 group-hover:opacity-75"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent z-10" />
-                    </>
-                  ) : (
-                    <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 to-transparent z-10" />
-                  )}
+                  {(() => {
+                    const imgUrl = cat.image_url || products?.find((p) => p.category === cat.slug)?.images.day;
+                    return imgUrl ? (
+                      <>
+                        <img
+                          src={imgUrl}
+                          alt={cat.name}
+                          className="absolute inset-0 h-full w-full object-cover opacity-60 transition-transform duration-500 group-hover:scale-105 group-hover:opacity-75"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent z-10" />
+                      </>
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 to-transparent z-10" />
+                    );
+                  })()}
                   <span className="relative z-20 font-serif text-lg font-bold text-white group-hover:text-amber-400 transition-colors drop-shadow-md">
                     {cat.name}
                   </span>

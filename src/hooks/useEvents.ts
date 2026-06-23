@@ -18,7 +18,7 @@ export const useEvents = () => {
     queryKey: ["events"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("events" as any)
+        .from("events")
         .select("*")
         .order("start_date", { ascending: true });
       if (error) throw error;

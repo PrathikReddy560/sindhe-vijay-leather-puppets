@@ -13,7 +13,7 @@ export const useShowcaseVideos = () => {
     queryKey: ["showcase_videos"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("showcase_videos" as any)
+        .from("showcase_videos")
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;

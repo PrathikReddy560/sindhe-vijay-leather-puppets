@@ -15,7 +15,7 @@ export const useCategories = () => {
     queryKey: ["categories"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("categories" as any)
+        .from("categories")
         .select("*")
         .order("display_order", { ascending: true });
       if (error) throw error;

@@ -14,6 +14,135 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          image_url: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          image_url: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          image_url?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      art_stories: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          story: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          story: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          story?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          image_url: string | null
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      events: {
+        Row: {
+          created_at: string
+          description: string
+          end_date: string
+          id: string
+          image_url: string | null
+          location: string
+          stall_no: string | null
+          start_date: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          end_date: string
+          id?: string
+          image_url?: string | null
+          location: string
+          stall_no?: string | null
+          start_date: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          end_date?: string
+          id?: string
+          image_url?: string | null
+          location?: string
+          stall_no?: string | null
+          start_date?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      hero_slides: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
@@ -121,10 +250,11 @@ export type Database = {
       }
       products: {
         Row: {
-          category: Database["public"]["Enums"]["product_category"]
+          category: string
           created_at: string
           description: string
           dimensions: string | null
+          discount_price: number | null
           featured: boolean
           id: string
           image_day: string
@@ -138,10 +268,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          category?: Database["public"]["Enums"]["product_category"]
+          category?: string
           created_at?: string
           description?: string
           dimensions?: string | null
+          discount_price?: number | null
           featured?: boolean
           id?: string
           image_day?: string
@@ -155,10 +286,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          category?: Database["public"]["Enums"]["product_category"]
+          category?: string
           created_at?: string
           description?: string
           dimensions?: string | null
+          discount_price?: number | null
           featured?: boolean
           id?: string
           image_day?: string
@@ -212,6 +344,27 @@ export type Database = {
         }
         Relationships: []
       }
+      showcase_videos: {
+        Row: {
+          created_at: string
+          id: string
+          title: string | null
+          video_url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          video_url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          video_url?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -252,7 +405,6 @@ export type Database = {
         | "shipped"
         | "delivered"
         | "cancelled"
-      product_category: "big-paintings" | "medium-paintings" | "hanging-lamps"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -389,7 +541,6 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
-      product_category: ["big-paintings", "medium-paintings", "hanging-lamps"],
     },
   },
 } as const

@@ -14,7 +14,7 @@ export const useAchievements = () => {
     queryKey: ["achievements"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("achievements" as any)
+        .from("achievements")
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;

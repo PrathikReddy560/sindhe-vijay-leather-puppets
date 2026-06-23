@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2, Upload, Shield, Loader2, Package, MessageCircle, Mail, Image, Video, BookOpen, Calendar, Award } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/context/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useProducts, DbProduct } from "@/hooks/useProducts";
@@ -67,7 +68,7 @@ const Admin = () => {
     try {
       // Get max display order
       const { data: maxOrderData } = await supabase
-        .from("categories" as any)
+        .from("categories")
         .select("display_order")
         .order("display_order", { ascending: false })
         .limit(1);
@@ -75,7 +76,7 @@ const Admin = () => {
       const nextOrder = maxOrderData && maxOrderData[0] ? (maxOrderData[0].display_order + 1) : 1;
 
       const { error } = await supabase
-        .from("categories" as any)
+        .from("categories")
         .insert({
           name: newCategoryName.trim(),
           slug: newCategorySlug.trim().toLowerCase(),
@@ -94,6 +95,19 @@ const Admin = () => {
       toast({ title: "Error adding category", description: err.message, variant: "destructive" });
     } finally {
       setAddingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this category? Products in this category will not be deleted, but they may not show up correctly if their category doesn't exist.")) return;
+    
+    try {
+      const { error } = await supabase.from("categories").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Category deleted" });
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+    } catch (err: any) {
+      toast({ title: "Error deleting category", description: err.message, variant: "destructive" });
     }
   };
 
@@ -233,7 +247,7 @@ const Admin = () => {
 
   const fetchVideos = async () => {
     setVideosLoading(true);
-    const { data, error } = await supabase.from("showcase_videos" as any).select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("showcase_videos").select("*").order("created_at", { ascending: false });
     if (!error && data) setVideos(data);
     setVideosLoading(false);
   };
@@ -242,7 +256,7 @@ const Admin = () => {
     if (!newVideoUrl.trim()) return;
     setSavingVideo(true);
     try {
-      const { error } = await supabase.from("showcase_videos" as any).insert({
+      const { error } = await supabase.from("showcase_videos").insert({
         video_url: newVideoUrl.trim(),
         title: newVideoTitle.trim() || null
       });
@@ -260,7 +274,7 @@ const Admin = () => {
 
   const handleDeleteVideo = async (id: string) => {
     try {
-      const { error } = await supabase.from("showcase_videos" as any).delete().eq("id", id);
+      const { error } = await supabase.from("showcase_videos").delete().eq("id", id);
       if (error) throw error;
       toast({ title: "Video deleted" });
       fetchVideos();
@@ -271,7 +285,7 @@ const Admin = () => {
 
   const fetchStories = async () => {
     setStoriesLoading(true);
-    const { data, error } = await supabase.from("art_stories" as any).select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("art_stories").select("*").order("created_at", { ascending: false });
     if (!error && data) setStories(data);
     setStoriesLoading(false);
   };
@@ -283,7 +297,7 @@ const Admin = () => {
     }
     setSavingStory(true);
     try {
-      const { error } = await supabase.from("art_stories" as any).insert({
+      const { error } = await supabase.from("art_stories").insert({
         title: newStoryTitle.trim(),
         story: newStoryText.trim(),
         image_url: newStoryImage.trim()
@@ -303,7 +317,7 @@ const Admin = () => {
 
   const handleDeleteStory = async (id: string) => {
     try {
-      const { error } = await supabase.from("art_stories" as any).delete().eq("id", id);
+      const { error } = await supabase.from("art_stories").delete().eq("id", id);
       if (error) throw error;
       toast({ title: "Story deleted" });
       fetchStories();
@@ -314,7 +328,7 @@ const Admin = () => {
 
   const fetchEvents = async () => {
     setEventsLoading(true);
-    const { data, error } = await supabase.from("events" as any).select("*").order("start_date", { ascending: true });
+    const { data, error } = await supabase.from("events").select("*").order("start_date", { ascending: true });
     if (!error && data) setEventsList(data);
     setEventsLoading(false);
   };
@@ -326,7 +340,7 @@ const Admin = () => {
     }
     setSavingEvent(true);
     try {
-      const { error } = await supabase.from("events" as any).insert({
+      const { error } = await supabase.from("events").insert({
         title: newEventTitle.trim(),
         description: newEventDesc.trim(),
         location: newEventLocation.trim(),
@@ -354,7 +368,7 @@ const Admin = () => {
 
   const handleDeleteEvent = async (id: string) => {
     try {
-      const { error } = await supabase.from("events" as any).delete().eq("id", id);
+      const { error } = await supabase.from("events").delete().eq("id", id);
       if (error) throw error;
       toast({ title: "Event deleted" });
       fetchEvents();
@@ -365,7 +379,7 @@ const Admin = () => {
 
   const fetchAchievements = async () => {
     setAchievementsLoading(true);
-    const { data, error } = await supabase.from("achievements" as any).select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("achievements").select("*").order("created_at", { ascending: false });
     if (!error && data) setAchievementsList(data);
     setAchievementsLoading(false);
   };
@@ -377,7 +391,7 @@ const Admin = () => {
     }
     setSavingAch(true);
     try {
-      const { error } = await supabase.from("achievements" as any).insert({
+      const { error } = await supabase.from("achievements").insert({
         title: newAchTitle.trim(),
         description: newAchDesc.trim(),
         image_url: newAchImage.trim()
@@ -397,7 +411,7 @@ const Admin = () => {
 
   const handleDeleteAchievement = async (id: string) => {
     try {
-      const { error } = await supabase.from("achievements" as any).delete().eq("id", id);
+      const { error } = await supabase.from("achievements").delete().eq("id", id);
       if (error) throw error;
       toast({ title: "Achievement deleted" });
       fetchAchievements();
@@ -419,7 +433,7 @@ const Admin = () => {
   const fetchHeroSlides = async () => {
     setHeroSlidesLoading(true);
     const { data, error } = await supabase
-      .from("hero_slides" as any)
+      .from("hero_slides")
       .select("*")
       .order("created_at", { ascending: true });
     if (!error && data) setHeroSlides(data);
@@ -437,7 +451,7 @@ const Admin = () => {
       const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
 
       const { error: insertError } = await supabase
-        .from("hero_slides" as any)
+        .from("hero_slides")
         .insert({ image_url: publicUrl });
 
       if (insertError) throw insertError;
@@ -455,7 +469,7 @@ const Admin = () => {
     if (!customSlideUrl.trim()) return;
     try {
       const { error } = await supabase
-        .from("hero_slides" as any)
+        .from("hero_slides")
         .insert({ image_url: customSlideUrl.trim() });
       if (error) throw error;
       toast({ title: "Background added", description: "Image URL successfully added to backgrounds slideshow." });
@@ -469,7 +483,7 @@ const Admin = () => {
   const handleDeleteSlide = async (id: string) => {
     try {
       const { error } = await supabase
-        .from("hero_slides" as any)
+        .from("hero_slides")
         .delete()
         .eq("id", id);
       if (error) throw error;
@@ -542,7 +556,7 @@ const Admin = () => {
     setUpdatingOrderId(orderId);
     const { error } = await supabase
       .from("orders")
-      .update({ status: newStatus as any })
+      .update({ status: newStatus as Database["public"]["Enums"]["order_status"] })
       .eq("id", orderId);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -1328,6 +1342,7 @@ const Admin = () => {
                         <TableHead>Thumbnail</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Slug</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1343,11 +1358,16 @@ const Admin = () => {
                           </TableCell>
                           <TableCell className="font-medium">{cat.name}</TableCell>
                           <TableCell className="font-mono text-xs">{cat.slug}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-500/10" onClick={() => handleDeleteCategory(cat.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))}
                       {(!dbCategories || dbCategories.length === 0) && (
                         <TableRow>
-                          <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">No categories found</TableCell>
+                          <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">No categories found</TableCell>
                         </TableRow>
                       )}
                     </TableBody>
