@@ -12,7 +12,7 @@ const formatPrice = (p: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(p);
 
 const ProductCard = ({ product }: { product: Product }) => {
-  const tag = inventoryLabels[product.inventoryTag];
+  const tag = inventoryLabels[product.inventoryTag] || { label: "In Stock", variant: "outline" };
 
   return (
     <Link

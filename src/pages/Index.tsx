@@ -216,7 +216,7 @@ const Index = () => {
             <div className="mt-10 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
           ) : (
             <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {featured.slice(0, 4).map(toDisplayProduct).map((product) => (
+              {featured.slice(0, 4).map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
