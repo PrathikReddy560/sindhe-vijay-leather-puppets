@@ -51,8 +51,8 @@ const Navbar = () => {
           {navLinks.map((link) => {
             const isActive = location.pathname === link.to;
             const textClass = isTransparent
-              ? isActive ? "text-white" : "text-white/80 hover:text-white"
-              : isActive ? "text-primary" : "text-muted-foreground hover:text-primary";
+              ? isActive ? "text-amber-500 underline underline-offset-4" : "text-white/80 hover:text-amber-500 hover:underline hover:underline-offset-4"
+              : isActive ? "text-amber-500 underline underline-offset-4" : "text-muted-foreground hover:text-amber-500 hover:underline hover:underline-offset-4";
             
             return (
               <Link
@@ -69,8 +69,8 @@ const Navbar = () => {
             to="/admin"
             className={`flex items-center gap-1 text-sm font-medium transition-colors ${
               isTransparent
-                ? location.pathname === "/admin" ? "text-white" : "text-white/80 hover:text-white"
-                : location.pathname === "/admin" ? "text-primary" : "text-muted-foreground hover:text-primary"
+                ? location.pathname === "/admin" ? "text-amber-500 underline underline-offset-4" : "text-white/80 hover:text-amber-500 hover:underline hover:underline-offset-4"
+                : location.pathname === "/admin" ? "text-amber-500 underline underline-offset-4" : "text-muted-foreground hover:text-amber-500 hover:underline hover:underline-offset-4"
             }`}
           >
             
@@ -118,7 +118,7 @@ const Navbar = () => {
             to={link.to}
             onClick={() => setMobileOpen(false)}
             className={`rounded-md px-4 py-3 text-sm font-medium transition-colors hover:bg-muted ${
-            location.pathname === link.to ? "text-primary" : "text-muted-foreground"}`
+            location.pathname === link.to ? "text-amber-500 underline underline-offset-4" : "text-muted-foreground hover:text-amber-500 hover:underline hover:underline-offset-4"}`
             }>
             
                 {link.label}
@@ -129,7 +129,7 @@ const Navbar = () => {
             to="/admin"
             onClick={() => setMobileOpen(false)}
             className={`flex items-center gap-2 rounded-md px-4 py-3 text-sm font-medium transition-colors hover:bg-muted ${
-            location.pathname === "/admin" ? "text-primary" : "text-muted-foreground"}`
+            location.pathname === "/admin" ? "text-amber-500 underline underline-offset-4" : "text-muted-foreground hover:text-amber-500 hover:underline hover:underline-offset-4"}`
             }>
             
                 <Shield className="h-4 w-4" /> Admin Panel
