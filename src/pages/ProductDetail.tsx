@@ -1,13 +1,14 @@
 import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Sun, Moon, Shield, Award, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
+import { Sun, Moon, Shield, Award, ShoppingBag, ArrowLeft, Loader2, ZoomIn, ZoomOut, Expand } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useProduct, useProducts, toDisplayProduct } from "@/hooks/useProducts";
 import ProductCard from "@/components/ProductCard";
 import { useCart } from "@/context/CartContext";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 
 const inventoryLabels: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
   "in-stock": { label: "In Stock", variant: "outline" },
@@ -23,6 +24,7 @@ const ProductDetail = () => {
   const { data: dbProduct, isLoading } = useProduct(id || "");
   const { data: allProducts } = useProducts();
   const [isNight, setIsNight] = useState(false);
+  const [zoomScale, setZoomScale] = useState(1);
   const { addItem } = useCart();
 
   if (isLoading) {
@@ -67,7 +69,7 @@ const ProductDetail = () => {
             className="relative"
           >
             <div
-              className={`aspect-square overflow-hidden rounded-lg transition-colors duration-500 ${
+              className={`relative aspect-square overflow-hidden rounded-lg transition-colors duration-500 ${
                 isNight ? "bg-foreground" : "bg-muted"
               }`}
             >
@@ -79,6 +81,50 @@ const ProductDetail = () => {
                 }`}
                 loading="lazy"
               />
+              <Dialog onOpenChange={(open) => !open && setZoomScale(1)}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="absolute left-4 top-4 h-9 w-9 bg-background/50 backdrop-blur hover:bg-background/80"
+                  >
+                    <Expand className="h-4 w-4" />
+                    <span className="sr-only">Zoom image</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-[95vw] h-[95vh] p-0 flex flex-col bg-black/95 border-none">
+                  <DialogTitle className="sr-only">Zoom Image</DialogTitle>
+                  <div className="flex-1 overflow-auto flex items-center justify-center p-4 relative">
+                    <img
+                      src={isNight ? product.images.night : product.images.day}
+                      alt={`${product.name} zoomed`}
+                      style={{ transform: `scale(${zoomScale})` }}
+                      className="max-w-full max-h-full object-contain transition-transform duration-200 cursor-move"
+                    />
+                  </div>
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-background/20 backdrop-blur-md p-2 rounded-full border border-white/10">
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="rounded-full bg-black/50 text-white border-white/20 hover:bg-black hover:text-white"
+                      onClick={() => setZoomScale(prev => Math.max(prev - 0.5, 1))}
+                      disabled={zoomScale <= 1}
+                    >
+                      <ZoomOut className="h-4 w-4" />
+                    </Button>
+                    <span className="text-white text-sm font-medium w-12 text-center">{Math.round(zoomScale * 100)}%</span>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="rounded-full bg-black/50 text-white border-white/20 hover:bg-black hover:text-white"
+                      onClick={() => setZoomScale(prev => Math.min(prev + 0.5, 4))}
+                      disabled={zoomScale >= 4}
+                    >
+                      <ZoomIn className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             <Button
               variant="outline"
