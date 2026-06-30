@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Badge } from "@/components/ui/badge";
+import { ModeToggle } from "@/components/ModeToggle";
 
 const navLinks = [
   { to: "/", label: "Home" },
@@ -80,6 +81,7 @@ const Navbar = () => {
         </nav>
 
         <div className="flex items-center gap-2">
+          <ModeToggle isTransparent={isTransparent} />
           <Link to={user ? "/profile" : "/login"}>
             <Button variant="ghost" size="icon" className={isTransparent ? "text-white hover:text-white hover:bg-white/20" : "text-muted-foreground hover:text-foreground"}>
               {user ? <User className={`h-5 w-5 ${isTransparent ? "" : "text-primary"}`} /> : <User className="h-5 w-5" />}

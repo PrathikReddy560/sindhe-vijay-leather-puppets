@@ -1,46 +1,53 @@
 import { Link } from "react-router-dom";
 
 const Footer = () => (
-  <footer className="border-t bg-card">
+  <footer className="bg-stone-950 text-stone-300 dark:bg-stone-950 dark:text-stone-300">
     <div className="container py-12">
       <div className="grid gap-8 md:grid-cols-4">
         <div className="md:col-span-2">
-          <h3 className="font-serif text-xl font-bold text-foreground">Sindhe Vijay Leather Puppets</h3>
-          <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+          <h3 className="font-serif text-xl font-bold text-stone-50">Sindhe Vijay Leather Puppets</h3>
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-stone-400">
             Preserving the ancient art of Thogalu Gombe — traditional handcrafted leather shadow puppetry
             from Jeekavandlapalli, Karnataka. A legacy of art, culture, and storytelling.
           </p>
         </div>
         <div>
-          <h4 className="font-serif text-sm font-semibold text-foreground">Quick Links</h4>
+          <h4 className="font-serif text-sm font-semibold text-stone-50">Quick Links</h4>
           <nav className="mt-3 flex flex-col gap-2">
             {[
               { to: "/shop", label: "Shop All" },
               { to: "/heritage", label: "Our Heritage" },
               { to: "/contact", label: "Custom Orders" },
             ].map((l) => (
-              <Link key={l.to} to={l.to} className="text-sm text-muted-foreground transition-colors hover:text-primary">
+              <Link key={l.to} to={l.to} className="text-sm text-stone-400 transition-colors hover:text-amber-500 hover:underline">
                 {l.label}
               </Link>
             ))}
           </nav>
         </div>
         <div>
-          <h4 className="font-serif text-sm font-semibold text-foreground">Contact</h4>
-          <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
-            <span>Jeekavandlapalli Village</span>
-            <span>Bagepalli, Chikkabalapur</span>
-            <span>Karnataka 561207, India</span>
-            <a href="mailto:sindhevijayleatherpuppets@gmail.com" className="transition-colors hover:text-primary">
+          <h4 className="font-serif text-sm font-semibold text-stone-50">Contact</h4>
+          <div className="mt-3 flex flex-col gap-2 text-sm text-stone-400">
+            <a 
+              href="https://maps.google.com/?q=Jeekavandlapalli+Village,Bagepalli,Chikkabalapur,Karnataka+561207,India" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="transition-colors hover:text-amber-500 hover:underline"
+            >
+              Jeekavandlapalli Village<br />
+              Bagepalli, Chikkabalapur<br />
+              Karnataka 561207, India
+            </a>
+            <a href="mailto:sindhevijayleatherpuppets@gmail.com" className="transition-colors hover:text-amber-500 hover:underline mt-2">
               sindhevijayleatherpuppets@gmail.com
             </a>
-            <a href="https://instagram.com/sindhe_vijay_leather_puppets" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-primary font-medium">
+            <a href="https://instagram.com/sindhe_vijay_leather_puppets" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-amber-500 hover:underline font-medium">
               Instagram: @sindhe_vijay_leather_puppets
             </a>
           </div>
         </div>
       </div>
-      <div className="mt-10 border-t pt-6 text-center text-xs text-muted-foreground">
+      <div className="mt-10 border-t border-stone-800 pt-6 text-center text-xs text-stone-500">
         © {new Date().getFullYear()} Sindhe Vijay Leather Puppets. All rights reserved. Handmade with ❤️ in Jeekavandlapalli.
       </div>
     </div>

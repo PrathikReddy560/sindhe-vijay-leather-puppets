@@ -90,8 +90,8 @@ const Index = () => {
             />
           </AnimatePresence>
           {/* Cinematic Overlays */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black/80 z-10" />
-          <div className="absolute inset-0 z-10 opacity-70" style={{ background: "radial-gradient(circle, transparent 20%, rgba(0,0,0,0.8) 100%)" }} />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/20 to-black/60 z-10" />
+          <div className="absolute inset-0 z-10 opacity-60" style={{ background: "radial-gradient(circle, transparent 30%, rgba(0,0,0,0.6) 100%)" }} />
         </div>
 
         <div className="container relative z-20 py-24">
