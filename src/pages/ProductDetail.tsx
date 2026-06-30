@@ -86,7 +86,7 @@ const ProductDetail = () => {
                   <Button
                     variant="secondary"
                     size="icon"
-                    className="absolute left-4 top-4 h-9 w-9 bg-background/50 backdrop-blur hover:bg-background/80"
+                    className="absolute left-4 top-4 h-9 w-9 bg-black/60 text-white backdrop-blur hover:bg-black/80 hover:text-white border border-white/20 shadow-sm"
                   >
                     <Expand className="h-4 w-4" />
                     <span className="sr-only">Zoom image</span>
