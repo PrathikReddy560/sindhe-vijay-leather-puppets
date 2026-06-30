@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogOut, Package, Clock, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,9 @@ const statusColors: Record<string, string> = {
 const Profile = () => {
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("orders");
   const [profile, setProfile] = useState<ProfileData>({ full_name: null, phone: null, address: null, city: null, state: null, pincode: null });
   const [saving, setSaving] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -64,7 +66,14 @@ const Profile = () => {
         .eq("user_id", user.id)
         .single()
         .then(({ data }) => {
-          if (data) setProfile(data);
+          if (data) {
+            setProfile(data);
+            const isComplete = data.full_name && data.phone && data.address && data.city && data.state && data.pincode;
+            if (!isComplete && location.state?.fromLogin) {
+              setActiveTab("profile");
+              toast({ title: "Incomplete Profile", description: "Please fill in your contact and shipping details to speed up your checkout." });
+            }
+          }
         });
 
       // Fetch orders
@@ -114,7 +123,7 @@ const Profile = () => {
             </Button>
           </div>
 
-          <Tabs defaultValue="orders" className="mt-8">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="orders" className="gap-2">
                 <Package className="h-4 w-4" /> Orders

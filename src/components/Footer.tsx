@@ -29,7 +29,7 @@ const Footer = () => (
           <h4 className="font-serif text-sm font-semibold text-stone-50">Contact</h4>
           <div className="mt-3 flex flex-col gap-2 text-sm text-stone-400">
             <a
-              href="https://maps.google.com/?q=Jeekavandlapalli+Village,Bagepalli,Chikkabalapur,Karnataka+561207,India"
+              href="https://www.google.com/maps/place/Sindhe+vijay+Leather+puppets/@13.8675952,77.9431707,17z/data=!3m1!4b1!4m6!3m5!1s0x3bb229e961a0bf8f:0xe83fb39e8a025224!8m2!3d13.8675952!4d77.9431707!16s%2Fg%2F11vz4qx090?hl=en-US&entry=ttu&g_ep=EgoyMDI2MDYyNC4wIKXMDSoASAFQAw%3D%3D"
               target="_blank"
               rel="noopener noreferrer"
               className="underline underline-offset-4 transition-colors hover:text-amber-500"

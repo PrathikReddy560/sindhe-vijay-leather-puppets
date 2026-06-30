@@ -15,6 +15,7 @@ const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -28,6 +29,12 @@ const Login = () => {
     setLoading(true);
 
     if (isSignUp) {
+      if (password !== confirmPassword) {
+        toast({ title: "Error", description: "Passwords do not match", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+
       const { error } = await signUp(email, password, fullName);
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -40,7 +47,7 @@ const Login = () => {
         toast({ title: "Error", description: error.message, variant: "destructive" });
       } else {
         toast({ title: "Welcome back!" });
-        navigate("/profile");
+        navigate("/profile", { state: { fromLogin: true } });
       }
     }
     setLoading(false);
@@ -78,6 +85,12 @@ const Login = () => {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
             </div>
+            {isSignUp && (
+              <div>
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+              </div>
+            )}
             {!isSignUp && (
               <div className="text-right">
                 <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot password?</Link>

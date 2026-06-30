@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, Navigate } from "react-router-dom";
 import { ArrowLeft, MessageCircle, ShieldCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,9 +33,32 @@ const Checkout = () => {
   const [step, setStep] = useState(1);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [shipping, setShipping] = useState<ShippingData>({
-    fullName: "", phone: "", address: "", city: "", state: "", pincode: "",
+    fullName: user?.user_metadata?.full_name || "", phone: "", address: "", city: "", state: "", pincode: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (user) {
+      supabase
+        .from("profiles")
+        .select("full_name, phone, address, city, state, pincode")
+        .eq("user_id", user.id)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setShipping(prev => ({
+              ...prev,
+              fullName: data.full_name || prev.fullName,
+              phone: data.phone || prev.phone,
+              address: data.address || prev.address,
+              city: data.city || prev.city,
+              state: data.state || prev.state,
+              pincode: data.pincode || prev.pincode,
+            }));
+          }
+        });
+    }
+  }, [user]);
 
   if (!user) {
     return <Navigate to="/login" replace />;
