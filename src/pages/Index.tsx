@@ -99,7 +99,7 @@ const Index = () => {
             <motion.p variants={fadeUp} custom={0} className="text-xs font-semibold uppercase tracking-[0.4em] text-amber-400">
               Jeekavandlapalli · Karnataka
             </motion.p>
-            <motion.h1 variants={fadeUp} custom={1} className="mt-4 font-serif text-4xl font-bold leading-tight text-white md:text-6xl lg:text-7xl">
+            <motion.h1 variants={fadeUp} custom={1} className="mt-4 font-serif text-3xl font-bold leading-tight text-white md:text-6xl lg:text-7xl">
               The Dance of<br />
               <span className="italic text-amber-400 drop-shadow-[0_2px_15px_rgba(251,191,36,0.3)]">Shadows & Light</span>
             </motion.h1>
@@ -145,7 +145,7 @@ const Index = () => {
               Each piece begins with carefully selected goat hide, cured and treated using methods unchanged for centuries. The leather is then hand-perforated with thousands of tiny holes using iron styluses, creating the intricate patterns that come alive when backlit. Natural mineral dyes — turmeric yellow, indigo blue, pomegranate red — are applied by hand, layer by layer.
             </p>
           </motion.div>
-          <div className="mt-14 grid gap-8 md:grid-cols-3">
+          <div className="mt-14 grid gap-6 md:gap-8 md:grid-cols-3">
             {[
               { title: "Select & Cure", desc: "Premium goat hide is carefully selected and treated using traditional lime-water curing methods for flexibility and translucency." },
               { title: "Perforate & Shape", desc: "Thousands of perforations are hand-punched with iron styluses to create patterns that cast mesmerizing shadows when illuminated." },
@@ -168,7 +168,7 @@ const Index = () => {
             <p className="text-xs font-medium uppercase tracking-[0.3em] text-primary">Collections</p>
             <h2 className="mt-3 font-serif text-3xl font-bold text-foreground md:text-4xl">Browse by Category</h2>
           </div>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-2 md:gap-6 lg:grid-cols-4">
             {(dbCategories || []).map((cat, i) => (
               <motion.div key={cat.slug} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.5 }}>
                 <Link
@@ -215,7 +215,7 @@ const Index = () => {
           {isLoading ? (
             <div className="mt-10 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
           ) : (
-            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-12 grid grid-cols-2 gap-3 md:gap-6 lg:grid-cols-4">
               {featured.slice(0, 4).map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

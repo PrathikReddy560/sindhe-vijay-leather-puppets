@@ -30,20 +30,20 @@ const ProductCard = ({ product }: { product: Product }) => {
           {tag.label}
         </Badge>
       </div>
-      <div className="p-4">
+      <div className="p-3 md:p-4">
         <h3 className="font-serif text-sm font-semibold text-foreground line-clamp-1 md:text-base">{product.name}</h3>
         <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{product.description}</p>
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 md:gap-2">
           {product.discountPrice ? (
             <>
-              <span className="text-base font-bold text-primary">{formatPrice(product.discountPrice)}</span>
-              <span className="text-xs text-muted-foreground line-through">{formatPrice(product.price)}</span>
-              <Badge variant="secondary" className="bg-red-500/10 text-red-500 hover:bg-red-500/20 text-[10px] font-bold border-none px-1.5 py-0.5">
+              <span className="text-sm font-bold text-primary md:text-base">{formatPrice(product.discountPrice)}</span>
+              <span className="text-[10px] text-muted-foreground line-through md:text-xs">{formatPrice(product.price)}</span>
+              <Badge variant="secondary" className="bg-red-500/10 text-red-500 hover:bg-red-500/20 text-[9px] font-bold border-none px-1 py-0.5 md:text-[10px] md:px-1.5">
                 {Math.round(((product.price - product.discountPrice) / product.price) * 100)}% OFF
               </Badge>
             </>
           ) : (
-            <span className="text-base font-bold text-primary">{formatPrice(product.price)}</span>
+            <span className="text-sm font-bold text-primary md:text-base">{formatPrice(product.price)}</span>
           )}
         </div>
       </div>

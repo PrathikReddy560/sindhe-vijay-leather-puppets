@@ -28,10 +28,10 @@ const Footer = () => (
         <div>
           <h4 className="font-serif text-sm font-semibold text-stone-50">Contact</h4>
           <div className="mt-3 flex flex-col gap-2 text-sm text-stone-400">
-            <a 
-              href="https://maps.google.com/?q=Jeekavandlapalli+Village,Bagepalli,Chikkabalapur,Karnataka+561207,India" 
-              target="_blank" 
-              rel="noopener noreferrer" 
+            <a
+              href="https://maps.google.com/?q=Jeekavandlapalli+Village,Bagepalli,Chikkabalapur,Karnataka+561207,India"
+              target="_blank"
+              rel="noopener noreferrer"
               className="transition-colors hover:text-amber-500 hover:underline"
             >
               Jeekavandlapalli Village<br />
@@ -42,7 +42,7 @@ const Footer = () => (
               sindhevijayleatherpuppets@gmail.com
             </a>
             <a href="https://instagram.com/sindhe_vijay_leather_puppets" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-amber-500 hover:underline font-medium">
-              Instagram: @sindhe_vijay_leather_puppets
+              <ul>Instagram: @sindhe_vijay_leather_puppets</ul>
             </a>
           </div>
         </div>

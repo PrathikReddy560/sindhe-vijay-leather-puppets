@@ -212,7 +212,7 @@ const ProductDetail = () => {
         {related.length > 0 && (
           <section className="mt-20">
             <h2 className="font-serif text-2xl font-bold text-foreground">You May Also Like</h2>
-            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-8 grid grid-cols-2 gap-3 md:gap-6 lg:grid-cols-4">
               {related.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
