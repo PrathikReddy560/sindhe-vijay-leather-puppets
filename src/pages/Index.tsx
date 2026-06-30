@@ -111,7 +111,7 @@ const Index = () => {
               <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" asChild>
                 <Link to="/shop">Explore Collection <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
-              <Button variant="outline" size="lg" className="text-white border-white/30 hover:bg-white/10 hover:text-white" asChild>
+              <Button variant="outline" size="lg" className="bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white" asChild>
                 <Link to="/heritage">Our Heritage</Link>
               </Button>
             </motion.div>
