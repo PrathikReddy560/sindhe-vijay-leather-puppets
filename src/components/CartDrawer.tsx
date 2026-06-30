@@ -3,10 +3,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { Separator } from "@/components/ui/separator";
 
 const CartDrawer = () => {
   const { items, isOpen, setIsOpen, removeItem, updateQuantity, totalPrice } = useCart();
+  const { user } = useAuth();
 
   const formatPrice = (p: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(p);
@@ -90,7 +92,7 @@ const CartDrawer = () => {
                 <span className="text-primary">{formatPrice(totalPrice)}</span>
               </div>
               <Button className="mt-4 w-full" size="lg" asChild onClick={() => setIsOpen(false)}>
-                <Link to="/checkout">Proceed to Checkout</Link>
+                <Link to={user ? "/checkout" : "/login"}>{user ? "Proceed to Checkout" : "Log in to Checkout"}</Link>
               </Button>
             </div>
           </>

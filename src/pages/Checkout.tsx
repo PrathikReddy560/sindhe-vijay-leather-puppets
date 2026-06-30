@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { ArrowLeft, MessageCircle, ShieldCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,10 @@ const Checkout = () => {
     fullName: "", phone: "", address: "", city: "", state: "", pincode: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (items.length === 0) {
     return (

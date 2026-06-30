@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Sun, Moon, Shield, Award, ShoppingBag, ArrowLeft, Loader2, ZoomIn, ZoomOut, Expand } from "lucide-react";
@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { useProduct, useProducts, toDisplayProduct } from "@/hooks/useProducts";
 import ProductCard from "@/components/ProductCard";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 
 const inventoryLabels: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
@@ -26,6 +27,8 @@ const ProductDetail = () => {
   const [isNight, setIsNight] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
   const { addItem } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   if (isLoading) {
     return (
@@ -193,9 +196,15 @@ const ProductDetail = () => {
             <Button
               size="lg"
               className="mt-8 w-full gap-2"
-              onClick={() => addItem(product)}
+              onClick={() => {
+                if (!user) {
+                  navigate("/login");
+                } else {
+                  addItem(product);
+                }
+              }}
             >
-              <ShoppingBag className="h-4 w-4" /> Add to Shopping Bag
+              <ShoppingBag className="h-4 w-4" /> {user ? "Add to Shopping Bag" : "Log in to Purchase"}
             </Button>
           </motion.div>
         </div>
