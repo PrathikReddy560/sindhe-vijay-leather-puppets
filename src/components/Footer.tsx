@@ -19,7 +19,7 @@ const Footer = () => (
               { to: "/heritage", label: "Our Heritage" },
               { to: "/contact", label: "Custom Orders" },
             ].map((l) => (
-              <Link key={l.to} to={l.to} className="text-sm text-stone-400 transition-colors hover:text-amber-500 hover:underline">
+              <Link key={l.to} to={l.to} className="text-sm text-stone-400 underline underline-offset-4 transition-colors hover:text-amber-500">
                 {l.label}
               </Link>
             ))}
@@ -32,16 +32,16 @@ const Footer = () => (
               href="https://maps.google.com/?q=Jeekavandlapalli+Village,Bagepalli,Chikkabalapur,Karnataka+561207,India"
               target="_blank"
               rel="noopener noreferrer"
-              className="transition-colors hover:text-amber-500 hover:underline"
+              className="underline underline-offset-4 transition-colors hover:text-amber-500"
             >
               Jeekavandlapalli Village<br />
               Bagepalli, Chikkabalapur<br />
               Karnataka 561207, India
             </a>
-            <a href="mailto:sindhevijayleatherpuppets@gmail.com" className="transition-colors hover:text-amber-500 hover:underline mt-2">
+            <a href="mailto:sindhevijayleatherpuppets@gmail.com" className="mt-2 underline underline-offset-4 transition-colors hover:text-amber-500">
               sindhevijayleatherpuppets@gmail.com
             </a>
-            <a href="https://instagram.com/sindhe_vijay_leather_puppets" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-amber-500 hover:underline font-medium">
+            <a href="https://instagram.com/sindhe_vijay_leather_puppets" target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-4 transition-colors hover:text-amber-500">
               <ul>Instagram: @sindhe_vijay_leather_puppets</ul>
             </a>
           </div>
