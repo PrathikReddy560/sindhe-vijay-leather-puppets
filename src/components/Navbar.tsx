@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ShoppingBag, Menu, X, User, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,36 +19,60 @@ const navLinks = [
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const { totalItems, setIsOpen } = useCart();
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
   const location = useLocation();
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const isHome = location.pathname === "/";
+  const isTransparent = isHome && !isScrolled;
+
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <header className={`sticky top-0 z-50 transition-all duration-300 ${
+      isTransparent 
+        ? "bg-transparent border-transparent" 
+        : "border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-sm"
+    }`}>
       <div className="container flex h-16 items-center justify-between md:h-20">
         <Link to="/" className="flex items-center gap-2 py-1">
           <img alt="Sindhe Vijay Leather Puppets" className="h-14 w-auto md:h-18" src="/lovable-uploads/a59db8b9-c4c9-43d7-9346-e95ceed37723.png" />
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
-          {navLinks.map((link) =>
-          <Link
-            key={link.to}
-            to={link.to}
-            className={`text-sm font-medium transition-colors hover:text-primary ${
-            location.pathname === link.to ? "text-primary" : "text-muted-foreground"}`
-            }>
+          {navLinks.map((link) => {
+            const isActive = location.pathname === link.to;
+            const textClass = isTransparent
+              ? isActive ? "text-white" : "text-white/80 hover:text-white"
+              : isActive ? "text-primary" : "text-muted-foreground hover:text-primary";
             
-              {link.label}
-            </Link>
-          )}
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={`text-sm font-medium transition-colors ${textClass}`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
           {isAdmin &&
           <Link
             to="/admin"
-            className={`flex items-center gap-1 text-sm font-medium transition-colors hover:text-primary ${
-            location.pathname === "/admin" ? "text-primary" : "text-muted-foreground"}`
-            }>
+            className={`flex items-center gap-1 text-sm font-medium transition-colors ${
+              isTransparent
+                ? location.pathname === "/admin" ? "text-white" : "text-white/80 hover:text-white"
+                : location.pathname === "/admin" ? "text-primary" : "text-muted-foreground hover:text-primary"
+            }`}
+          >
             
               <Shield className="h-3.5 w-3.5" /> Admin
             </Link>
@@ -57,19 +81,19 @@ const Navbar = () => {
 
         <div className="flex items-center gap-2">
           <Link to={user ? "/profile" : "/login"}>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-              {user ? <User className="h-5 w-5 text-primary" /> : <User className="h-5 w-5" />}
+            <Button variant="ghost" size="icon" className={isTransparent ? "text-white hover:text-white hover:bg-white/20" : "text-muted-foreground hover:text-foreground"}>
+              {user ? <User className={`h-5 w-5 ${isTransparent ? "" : "text-primary"}`} /> : <User className="h-5 w-5" />}
             </Button>
           </Link>
           <Button
             variant="ghost"
             size="icon"
-            className="relative text-muted-foreground hover:text-foreground"
+            className={`relative ${isTransparent ? "text-white hover:text-white hover:bg-white/20" : "text-muted-foreground hover:text-foreground"}`}
             onClick={() => setIsOpen(true)}>
             
             <ShoppingBag className="h-5 w-5" />
             {totalItems > 0 &&
-            <Badge className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-[10px]">
+            <Badge className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-[10px] ${isTransparent ? "bg-white text-black hover:bg-white" : ""}`}>
                 {totalItems}
               </Badge>
             }
@@ -77,7 +101,7 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className={`md:hidden ${isTransparent ? "text-white hover:text-white hover:bg-white/20" : "text-muted-foreground hover:text-foreground"}`}
             onClick={() => setMobileOpen(!mobileOpen)}>
             
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

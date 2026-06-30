@@ -75,7 +75,7 @@ const Index = () => {
   return (
     <>
       {/* Hero */}
-      <section className="relative flex min-h-[85vh] items-center overflow-hidden bg-black text-white">
+      <section className="relative flex min-h-[100vh] items-center overflow-hidden bg-black text-white -mt-16 md:-mt-20 pt-16 md:pt-20">
         {/* Background Slideshow */}
         <div className="absolute inset-0 z-0">
           <AnimatePresence mode="wait">
