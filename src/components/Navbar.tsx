@@ -12,7 +12,6 @@ import { ModeToggle } from "@/components/ModeToggle";
 const navLinks = [
   { to: "/", label: "Home" },
   { to: "/shop", label: "Shop" },
-  { to: "/style-my-space", label: "Style My Space" },
   { to: "/heritage", label: "Our Heritage" },
   { to: "/workshops", label: "Workshops" },
   { to: "/events", label: "Events" },
@@ -51,7 +50,7 @@ const Navbar = () => {
           <img alt="Sindhe Vijay Leather Puppets" className="h-14 w-auto md:h-18" src="/lovable-uploads/a59db8b9-c4c9-43d7-9346-e95ceed37723.png" />
         </Link>
 
-        <nav className="hidden items-center gap-5 lg:gap-7 md:flex">
+        <nav className="hidden items-center gap-8 md:flex">
           {navLinks.map((link) => {
             const isActive = location.pathname === link.to;
             const textClass = isTransparent
