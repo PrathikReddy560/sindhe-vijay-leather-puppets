@@ -18,7 +18,7 @@ interface ProductGalleryProps {
   images: string[];
   productName: string;
   isNight?: boolean;
-  onToggleNight?: () => void;
+  onToggleNight?: (isNight?: boolean) => void;
   hasNightImage?: boolean;
   dayImage?: string;
   nightImage?: string;
@@ -29,13 +29,21 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
   productName,
   isNight = false,
   onToggleNight,
-  hasNightImage = false,
-  dayImage,
-  nightImage,
 }) => {
   // Guard against empty image array
   const galleryImages = images && images.length > 0 ? images : ["/images/products/big-ganesha.jpg"];
-  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Active image index: index 0 = Daylight image, index 1 = Illuminated / Night image
+  const [currentIndex, setCurrentIndex] = useState(isNight && galleryImages.length > 1 ? 1 : 0);
+
+  // Sync internal index if parent isNight prop changes externally
+  useEffect(() => {
+    if (isNight && galleryImages.length > 1 && currentIndex !== 1) {
+      setCurrentIndex(1);
+    } else if (!isNight && currentIndex === 1) {
+      setCurrentIndex(0);
+    }
+  }, [isNight, galleryImages.length]);
 
   // Full-screen lightbox state
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -61,21 +69,32 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
 
   const lightboxContainerRef = useRef<HTMLDivElement>(null);
 
-  // Navigation handlers
-  const handlePrev = useCallback(() => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1));
-    resetZoom();
-  }, [galleryImages.length]);
-
-  const handleNext = useCallback(() => {
-    setCurrentIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0));
-    resetZoom();
-  }, [galleryImages.length]);
-
   const resetZoom = () => {
     setZoomScale(1);
     setPanPosition({ x: 0, y: 0 });
   };
+
+  const handleSelectIndex = useCallback(
+    (index: number) => {
+      setCurrentIndex(index);
+      resetZoom();
+      if (onToggleNight) {
+        onToggleNight(index === 1);
+      }
+    },
+    [onToggleNight]
+  );
+
+  // Navigation handlers
+  const handlePrev = useCallback(() => {
+    const nextIdx = currentIndex > 0 ? currentIndex - 1 : galleryImages.length - 1;
+    handleSelectIndex(nextIdx);
+  }, [currentIndex, galleryImages.length, handleSelectIndex]);
+
+  const handleNext = useCallback(() => {
+    const nextIdx = currentIndex < galleryImages.length - 1 ? currentIndex + 1 : 0;
+    handleSelectIndex(nextIdx);
+  }, [currentIndex, galleryImages.length, handleSelectIndex]);
 
   const handleZoomIn = () => {
     setZoomScale((prev) => Math.min(prev + 0.5, 4));
@@ -105,6 +124,8 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
         handleZoomIn();
       } else if (e.key === "-") {
         handleZoomOut();
+      } else if (e.key === "0") {
+        resetZoom();
       }
     };
 
@@ -112,28 +133,23 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [lightboxOpen, handlePrev, handleNext]);
 
-  // Desktop Mouse Wheel Zoom in Lightbox
+  // Wheel zoom in Lightbox
   const handleWheel = (e: React.WheelEvent) => {
+    if (!lightboxOpen) return;
     e.preventDefault();
-    if (e.deltaY < 0) {
-      setZoomScale((prev) => Math.min(prev + 0.25, 4));
-    } else {
-      setZoomScale((prev) => {
-        const next = Math.max(prev - 0.25, 1);
-        if (next === 1) setPanPosition({ x: 0, y: 0 });
-        return next;
-      });
-    }
+    const zoomDelta = e.deltaY > 0 ? -0.25 : 0.25;
+    setZoomScale((prev) => {
+      const next = Math.min(Math.max(prev + zoomDelta, 1), 4);
+      if (next === 1) setPanPosition({ x: 0, y: 0 });
+      return next;
+    });
   };
 
-  // Desktop Mouse Drag/Pan when zoomed
+  // Mouse pan in Lightbox when zoomed
   const handleMouseDown = (e: React.MouseEvent) => {
     if (zoomScale <= 1) return;
     setIsDragging(true);
-    dragStartRef.current = {
-      x: e.clientX - panPosition.x,
-      y: e.clientY - panPosition.y,
-    };
+    dragStartRef.current = { x: e.clientX - panPosition.x, y: e.clientY - panPosition.y };
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -148,22 +164,36 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
     setIsDragging(false);
   };
 
-  // Mobile Touch Gestures (Pinch zoom, Double tap, Swipe)
+  // Touch handlers for Lightbox
+  const getTouchDistance = (t1: React.Touch, t2: React.Touch) => {
+    const dx = t1.clientX - t2.clientX;
+    const dy = t1.clientY - t2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
-      // Pinch to zoom start
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+      // Pinch start
+      const dist = getTouchDistance(e.touches[0], e.touches[1]);
       touchStateRef.current.initialDistance = dist;
       touchStateRef.current.initialScale = zoomScale;
     } else if (e.touches.length === 1) {
-      const now = Date.now();
-      const timeSinceLastTap = now - touchStateRef.current.lastTap;
+      // Pan or double tap start
+      const touch = e.touches[0];
+      touchStateRef.current.touchStartX = touch.clientX;
+      touchStateRef.current.touchStartY = touch.clientY;
 
-      // Double-tap detector (< 300ms)
-      if (timeSinceLastTap < 300) {
+      if (zoomScale > 1) {
+        setIsDragging(true);
+        dragStartRef.current = {
+          x: touch.clientX - panPosition.x,
+          y: touch.clientY - panPosition.y,
+        };
+      }
+
+      // Double tap detector
+      const now = Date.now();
+      if (now - touchStateRef.current.lastTap < 300) {
         if (zoomScale > 1) {
           resetZoom();
         } else {
@@ -171,36 +201,22 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
         }
       }
       touchStateRef.current.lastTap = now;
-
-      // Single touch start for pan or swipe
-      touchStateRef.current.touchStartX = e.touches[0].clientX;
-      touchStateRef.current.touchStartY = e.touches[0].clientY;
-
-      if (zoomScale > 1) {
-        dragStartRef.current = {
-          x: e.touches[0].clientX - panPosition.x,
-          y: e.touches[0].clientY - panPosition.y,
-        };
-      }
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
-      // Pinch to zoom
+      // Pinch zoom in progress
       e.preventDefault();
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+      const dist = getTouchDistance(e.touches[0], e.touches[1]);
       if (touchStateRef.current.initialDistance > 0) {
-        const factor = dist / touchStateRef.current.initialDistance;
-        const newScale = Math.min(Math.max(touchStateRef.current.initialScale * factor, 1), 4);
+        const ratio = dist / touchStateRef.current.initialDistance;
+        const newScale = Math.min(Math.max(touchStateRef.current.initialScale * ratio, 1), 4);
         setZoomScale(newScale);
         if (newScale === 1) setPanPosition({ x: 0, y: 0 });
       }
-    } else if (e.touches.length === 1 && zoomScale > 1) {
-      // Pan zoomed image
+    } else if (e.touches.length === 1 && zoomScale > 1 && isDragging) {
+      // Pan in progress
       e.preventDefault();
       setPanPosition({
         x: e.touches[0].clientX - dragStartRef.current.x,
@@ -215,7 +231,6 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
       const deltaX = e.changedTouches[0].clientX - touchStateRef.current.touchStartX;
       const deltaY = e.changedTouches[0].clientY - touchStateRef.current.touchStartY;
 
-      // Horizontal swipe threshold 50px
       if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
         if (deltaX < 0) {
           handleNext();
@@ -225,11 +240,11 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
       }
     }
     touchStateRef.current.initialDistance = 0;
+    setIsDragging(false);
   };
 
-  const currentImageUrl = isNight
-    ? (nightImage || galleryImages[1] || galleryImages[0])
-    : (galleryImages[currentIndex] || dayImage || galleryImages[0]);
+  const currentImageUrl = galleryImages[currentIndex] || galleryImages[0];
+  const isIlluminated = currentIndex === 1;
 
   return (
     <div className="space-y-4">
@@ -245,13 +260,13 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
             resetZoom();
             setLightboxOpen(true);
           }}
-          className={`relative aspect-square overflow-hidden rounded-xl border bg-muted/40 transition-colors duration-500 cursor-zoom-in flex items-center justify-center ${
-            isNight ? "bg-black/90" : "bg-card"
+          className={`relative aspect-square overflow-hidden rounded-xl border transition-colors duration-500 cursor-zoom-in flex items-center justify-center ${
+            isIlluminated ? "bg-black/95 border-amber-500/30" : "bg-card border-border/80"
           }`}
         >
           <AnimatePresence mode="wait">
             <motion.img
-              key={`${currentImageUrl}-${isNight}`}
+              key={`${currentImageUrl}-${currentIndex}`}
               src={currentImageUrl}
               alt={`${productName} view ${currentIndex + 1}`}
               initial={{ opacity: 0, scale: 0.98 }}
@@ -259,7 +274,9 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
               exit={{ opacity: 0, scale: 1.02 }}
               transition={{ duration: 0.3 }}
               className={`h-full w-full object-contain p-2 transition-all duration-300 ${
-                isNight ? "opacity-95 mix-blend-screen drop-shadow-[0_0_20px_rgba(251,191,36,0.5)]" : ""
+                isIlluminated
+                  ? "opacity-95 mix-blend-screen drop-shadow-[0_0_25px_rgba(251,191,36,0.45)]"
+                  : ""
               }`}
               loading="eager"
             />
@@ -319,38 +336,74 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
               </Button>
             </>
           )}
-        </div>
 
-        {/* Day / Night View Toggle (if available) */}
-        {hasNightImage && onToggleNight && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="absolute bottom-4 right-4 gap-2 bg-background/90 backdrop-blur border-border/80 shadow-md font-medium"
-            onClick={onToggleNight}
-          >
-            {isNight ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-primary" />}
-            {isNight ? "Daylight View" : "Illuminated View"}
-          </Button>
-        )}
+          {/* Daylight View & Illuminated View Interactive Buttons */}
+          {galleryImages.length > 1 && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="absolute bottom-3.5 right-3.5 z-20 flex items-center bg-background/95 dark:bg-black/90 backdrop-blur-md rounded-full p-1 border border-border/80 shadow-lg gap-1"
+            >
+              {/* Button 1: Daylight View (Image 1) */}
+              <button
+                type="button"
+                onClick={() => handleSelectIndex(0)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  currentIndex === 0
+                    ? "bg-amber-500 text-black shadow-sm font-bold scale-105"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                }`}
+                title="View in Natural Daylight (Image 1)"
+              >
+                <Sun className={`h-3.5 w-3.5 ${currentIndex === 0 ? "text-black fill-current" : "text-amber-500"}`} />
+                <span>Daylight View</span>
+              </button>
+
+              {/* Button 2: Illuminated View (Image 2) */}
+              <button
+                type="button"
+                onClick={() => handleSelectIndex(1)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  currentIndex === 1
+                    ? "bg-indigo-600 text-white shadow-sm font-bold scale-105"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                }`}
+                title="View Illuminated in Dark (Image 2)"
+              >
+                <Moon className={`h-3.5 w-3.5 ${currentIndex === 1 ? "text-amber-300 fill-current" : "text-indigo-400"}`} />
+                <span>Illuminated View</span>
+              </button>
+            </div>
+          )}
+        </div>
       </motion.div>
 
-      {/* Thumbnails Carousel / Strip */}
+      {/* Thumbnails Strip — Synchronized with Daylight/Illuminated Views */}
       {galleryImages.length > 1 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none">
           {galleryImages.map((imgUrl, index) => {
             const isActive = index === currentIndex;
+            const isDayThumb = index === 0;
+            const isNightThumb = index === 1;
+
             return (
               <button
                 key={`${imgUrl}-${index}`}
                 type="button"
-                onClick={() => setCurrentIndex(index)}
-                className={`relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all p-1 bg-muted/30 ${
+                onClick={() => handleSelectIndex(index)}
+                className={`relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all p-1 ${
                   isActive
-                    ? "border-primary ring-2 ring-primary/30 shadow-md scale-105"
-                    : "border-border/60 hover:border-primary/50 opacity-70 hover:opacity-100"
+                    ? isNightThumb
+                      ? "border-indigo-500 ring-2 ring-indigo-500/40 shadow-md scale-105 bg-black/80"
+                      : "border-amber-500 ring-2 ring-amber-500/40 shadow-md scale-105 bg-card"
+                    : "border-border/60 hover:border-primary/50 opacity-70 hover:opacity-100 bg-muted/20"
                 }`}
+                title={
+                  isDayThumb
+                    ? "Daylight View (Image 1)"
+                    : isNightThumb
+                    ? "Illuminated View (Image 2)"
+                    : `View ${index + 1}`
+                }
               >
                 <img
                   src={imgUrl}
@@ -358,6 +411,18 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
                   className="w-full h-full object-contain"
                   loading="lazy"
                 />
+
+                {/* Small indicator tag on thumbnail */}
+                {isDayThumb && (
+                  <span className="absolute bottom-0.5 right-0.5 p-0.5 rounded-full bg-amber-500/90 text-black">
+                    <Sun className="h-2.5 w-2.5 fill-current" />
+                  </span>
+                )}
+                {isNightThumb && (
+                  <span className="absolute bottom-0.5 right-0.5 p-0.5 rounded-full bg-indigo-600/90 text-white">
+                    <Moon className="h-2.5 w-2.5 fill-current" />
+                  </span>
+                )}
               </button>
             );
           })}
@@ -365,7 +430,7 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* Full-Screen Lightbox Modal with Multi-Touch, Pinch, and Wheel Zoom */}
+      {/* Full-Screen Lightbox Modal with Synchronized Controls */}
       {/* ========================================================================= */}
       {lightboxOpen && (
         <div
@@ -389,6 +454,34 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
                 {currentIndex + 1} / {galleryImages.length}
               </Badge>
             </div>
+
+            {/* Daylight / Illuminated View Switcher in Lightbox Header */}
+            {galleryImages.length > 1 && (
+              <div className="hidden sm:flex items-center bg-white/10 backdrop-blur-md rounded-full p-0.5 border border-white/15 gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleSelectIndex(0)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                    currentIndex === 0
+                      ? "bg-amber-500 text-black shadow-sm"
+                      : "text-white/70 hover:text-white"
+                  }`}
+                >
+                  <Sun className="h-3 w-3" /> Daylight
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectIndex(1)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                    currentIndex === 1
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-white/70 hover:text-white"
+                  }`}
+                >
+                  <Moon className="h-3 w-3" /> Illuminated
+                </button>
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
               <Button
@@ -426,7 +519,9 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
               <img
                 src={currentImageUrl}
                 alt={productName}
-                className="max-w-[90vw] max-h-[80vh] object-contain drop-shadow-2xl pointer-events-none"
+                className={`max-w-[90vw] max-h-[80vh] object-contain drop-shadow-2xl pointer-events-none ${
+                  isIlluminated ? "drop-shadow-[0_0_30px_rgba(251,191,36,0.6)]" : ""
+                }`}
                 draggable={false}
               />
             </div>
@@ -512,13 +607,10 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
                 {galleryImages.map((imgUrl, idx) => (
                   <button
                     key={`lb-thumb-${idx}`}
-                    onClick={() => {
-                      setCurrentIndex(idx);
-                      resetZoom();
-                    }}
+                    onClick={() => handleSelectIndex(idx)}
                     className={`h-12 w-12 rounded-md overflow-hidden border-2 transition-all p-0.5 flex-shrink-0 bg-white/5 ${
                       idx === currentIndex
-                        ? "border-amber-400 scale-110 shadow-md"
+                        ? "border-amber-400 scale-110 shadow-md ring-2 ring-amber-400/40"
                         : "border-white/20 opacity-50 hover:opacity-100"
                     }`}
                   >
