@@ -76,42 +76,71 @@ const Index = () => {
     <>
       {/* Hero */}
       <section className="relative flex min-h-[100vh] items-center overflow-hidden bg-black text-white -mt-16 md:-mt-20 pt-16 md:pt-20">
-        {/* Background Slideshow */}
-        <div className="absolute inset-0 z-0">
+        {/* Background Slideshow with Slow Cinematic Ken Burns Zoom */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.div
               key={bgIndex}
-              initial={{ opacity: 0, scale: 1.08 }}
-              animate={{ opacity: 0.45, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 1.8, ease: "easeInOut" }}
+              initial={{ opacity: 0, scale: 1 }}
+              animate={{ opacity: 0.5, scale: 1.05 }}
+              exit={{ opacity: 0, scale: 1.02 }}
+              transition={{ duration: 5.5, ease: "linear" }}
               className="absolute inset-0 bg-cover bg-center bg-no-repeat"
               style={{ backgroundImage: `url('${heroBackgrounds[bgIndex]}')` }}
             />
           </AnimatePresence>
-          {/* Cinematic Overlays */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/20 to-black/60 z-10" />
-          <div className="absolute inset-0 z-10 opacity-60" style={{ background: "radial-gradient(circle, transparent 30%, rgba(0,0,0,0.6) 100%)" }} />
+          {/* Subtle Ambient & Edge Vignette Overlays for Maximum Art Brilliance */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/70 z-10 pointer-events-none" />
+          <div
+            className="absolute inset-0 z-10 opacity-70 pointer-events-none"
+            style={{ background: "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.65) 100%)" }}
+          />
         </div>
 
-        <div className="container relative z-20 py-24">
+        <div className="container relative z-20 py-24 md:py-32">
           <motion.div initial="hidden" animate="visible" className="mx-auto max-w-3xl text-center">
-            <motion.p variants={fadeUp} custom={0} className="text-xs font-semibold uppercase tracking-[0.4em] text-amber-400">
+            <motion.p
+              variants={fadeUp}
+              custom={0}
+              className="text-xs md:text-sm font-semibold uppercase tracking-[0.35em] text-amber-400/90 drop-shadow-sm"
+            >
               Jeekavandlapalli · Karnataka
             </motion.p>
-            <motion.h1 variants={fadeUp} custom={1} className="mt-4 font-serif text-3xl font-bold leading-tight text-white md:text-6xl lg:text-7xl">
+            <motion.h1
+              variants={fadeUp}
+              custom={1}
+              className="mt-4 font-serif text-3xl font-bold leading-tight text-white md:text-6xl lg:text-7xl tracking-tight"
+            >
               The Dance of<br />
-              <span className="italic text-amber-400 drop-shadow-[0_2px_15px_rgba(251,191,36,0.3)]">Shadows & Light</span>
+              <span className="italic font-normal text-amber-400 drop-shadow-[0_2px_20px_rgba(251,191,36,0.35)]">
+                Shadows & Light
+              </span>
             </motion.h1>
-            <motion.p variants={fadeUp} custom={2} className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-stone-200 md:text-lg">
+            <motion.p
+              variants={fadeUp}
+              custom={2}
+              className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-stone-200/90 md:text-lg"
+            >
               Handcrafted leather shadow puppets and luminous art from the ancient tradition of
               Thogalu Gombe — where goat hide transforms into stories that dance with light.
             </motion.p>
             <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" asChild>
-                <Link to="/shop">Explore Collection <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <Button
+                size="lg"
+                className="group bg-amber-500 hover:bg-amber-600 text-black font-semibold shadow-lg shadow-amber-500/20 hover:shadow-amber-500/35 hover:-translate-y-0.5 transition-all"
+                asChild
+              >
+                <Link to="/shop" className="flex items-center gap-2">
+                  Explore Collection
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                </Link>
               </Button>
-              <Button variant="outline" size="lg" className="bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white" asChild>
+              <Button
+                variant="outline"
+                size="lg"
+                className="bg-black/30 backdrop-blur-sm text-white border-white/30 hover:bg-white/15 hover:text-white transition-colors"
+                asChild
+              >
                 <Link to="/heritage">Our Heritage</Link>
               </Button>
             </motion.div>

@@ -21,6 +21,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { ImageUploadManager } from "@/components/admin/ImageUploadManager";
+import { slugify, generateUniqueSlug } from "@/lib/slugify";
 
 const formatPrice = (p: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(p);
@@ -50,9 +52,34 @@ const Admin = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // New Category state
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategorySlug, setNewCategorySlug] = useState("");
+  const [newCategoryImage, setNewCategoryImage] = useState("");
+  const [uploadingCategoryImg, setUploadingCategoryImg] = useState(false);
   const [addingCategory, setAddingCategory] = useState(false);
+
+  // Edit Category state
+  const [editCatOpen, setEditCatOpen] = useState(false);
+  const [editingCat, setEditingCat] = useState<{
+    id: string;
+    name: string;
+    slug: string;
+    originalSlug: string;
+    image_url: string;
+    display_order: number;
+  } | null>(null);
+  const [savingCat, setSavingCat] = useState(false);
+  const [uploadingEditCatImg, setUploadingEditCatImg] = useState(false);
+
+  // Delete Category state
+  const [catToDelete, setCatToDelete] = useState<any | null>(null);
+  const [deleteCatDialogOpen, setDeleteCatDialogOpen] = useState(false);
+  const [deletingCat, setDeletingCat] = useState(false);
+
+  // Product images & gallery state
+  const [productImages, setProductImages] = useState<string[]>([]);
+  const [featuredImage, setFeaturedImage] = useState<string>("");
 
   const getCategoryLabel = (slug: string) => {
     const found = dbCategories?.find((c: any) => c.slug === slug);
@@ -60,10 +87,21 @@ const Admin = () => {
   };
 
   const handleAddCategory = async () => {
-    if (!newCategoryName.trim() || !newCategorySlug.trim()) {
+    const trimmedName = newCategoryName.trim();
+    const cleanSlug = slugify(newCategorySlug.trim() || trimmedName);
+
+    if (!trimmedName || !cleanSlug) {
       toast({ title: "Error", description: "Name and Slug are required", variant: "destructive" });
       return;
     }
+
+    // Check slug uniqueness
+    const exists = dbCategories?.some((c: any) => c.slug?.toLowerCase() === cleanSlug.toLowerCase());
+    if (exists) {
+      toast({ title: "Slug already exists", description: "Please choose a unique category slug.", variant: "destructive" });
+      return;
+    }
+
     setAddingCategory(true);
     try {
       // Get max display order
@@ -78,8 +116,8 @@ const Admin = () => {
       const { error } = await supabase
         .from("categories")
         .insert({
-          name: newCategoryName.trim(),
-          slug: newCategorySlug.trim().toLowerCase(),
+          name: trimmedName,
+          slug: cleanSlug,
           display_order: nextOrder,
           image_url: newCategoryImage.trim() || null
         });
@@ -98,16 +136,97 @@ const Admin = () => {
     }
   };
 
-  const handleDeleteCategory = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this category? Products in this category will not be deleted, but they may not show up correctly if their category doesn't exist.")) return;
-    
+  const handleOpenEditCategory = (cat: any) => {
+    setEditingCat({
+      id: cat.id,
+      name: cat.name || "",
+      slug: cat.slug || "",
+      originalSlug: cat.slug || "",
+      image_url: cat.image_url || "",
+      display_order: cat.display_order || 1,
+    });
+    setEditCatOpen(true);
+  };
+
+  const handleSaveEditedCategory = async () => {
+    if (!editingCat) return;
+    const trimmedName = editingCat.name.trim();
+    const cleanSlug = slugify(editingCat.slug.trim() || trimmedName);
+
+    if (!trimmedName || !cleanSlug) {
+      toast({ title: "Error", description: "Category Name and Slug cannot be empty.", variant: "destructive" });
+      return;
+    }
+
+    // Check uniqueness excluding itself
+    const slugCollision = dbCategories?.some(
+      (c: any) => c.id !== editingCat.id && c.slug?.toLowerCase() === cleanSlug.toLowerCase()
+    );
+    if (slugCollision) {
+      toast({ title: "Slug already in use", description: "Please enter a unique slug for this category.", variant: "destructive" });
+      return;
+    }
+
+    setSavingCat(true);
     try {
-      const { error } = await supabase.from("categories").delete().eq("id", id);
+      // 1. If slug changed, update products referencing the old slug to prevent broken links
+      if (editingCat.originalSlug && editingCat.originalSlug !== cleanSlug) {
+        const { error: prodUpdateError } = await supabase
+          .from("products")
+          .update({ category: cleanSlug })
+          .eq("category", editingCat.originalSlug);
+
+        if (prodUpdateError) {
+          console.warn("Could not cascade category slug update to products:", prodUpdateError);
+        }
+      }
+
+      // 2. Update category record
+      const { error } = await supabase
+        .from("categories")
+        .update({
+          name: trimmedName,
+          slug: cleanSlug,
+          image_url: editingCat.image_url.trim() || null,
+          display_order: Number(editingCat.display_order) || 1,
+        })
+        .eq("id", editingCat.id);
+
       if (error) throw error;
-      toast({ title: "Category deleted" });
+
+      toast({ title: "Category updated successfully" });
+      setEditCatOpen(false);
+      setEditingCat(null);
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    } catch (err: any) {
+      toast({ title: "Error updating category", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingCat(false);
+    }
+  };
+
+  const handleOpenDeleteCategory = (cat: any) => {
+    setCatToDelete(cat);
+    setDeleteCatDialogOpen(true);
+  };
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!catToDelete) return;
+    setDeletingCat(true);
+
+    try {
+      const { error } = await supabase.from("categories").delete().eq("id", catToDelete.id);
+      if (error) throw error;
+
+      toast({ title: "Category deleted successfully" });
+      setDeleteCatDialogOpen(false);
+      setCatToDelete(null);
       queryClient.invalidateQueries({ queryKey: ["categories"] });
     } catch (err: any) {
       toast({ title: "Error deleting category", description: err.message, variant: "destructive" });
+    } finally {
+      setDeletingCat(false);
     }
   };
 
@@ -131,9 +250,6 @@ const Admin = () => {
   const [uploadingSlide, setUploadingSlide] = useState(false);
   const [customSlideUrl, setCustomSlideUrl] = useState("");
 
-  // Category image state
-  const [newCategoryImage, setNewCategoryImage] = useState("");
-  const [uploadingCategoryImg, setUploadingCategoryImg] = useState(false);
 
   // Videos state
   const [videos, setVideos] = useState<any[]>([]);
@@ -629,42 +745,70 @@ const Admin = () => {
   };
 
   const handleSave = async () => {
-    if (!editingProduct.name || !editingProduct.slug || !editingProduct.image_day) {
-      toast({ title: "Missing fields", description: "Name, slug, and day image are required.", variant: "destructive" });
+    const trimmedName = editingProduct.name.trim();
+    const cleanSlug = slugify(editingProduct.slug.trim() || trimmedName);
+
+    if (!trimmedName || !cleanSlug) {
+      toast({ title: "Missing fields", description: "Product Name and Slug are required.", variant: "destructive" });
       return;
     }
+
+    if (productImages.length === 0) {
+      toast({ title: "Image required", description: "Please upload or provide at least one product image.", variant: "destructive" });
+      return;
+    }
+
+    // Check slug uniqueness
+    const collision = products?.some(
+      (p) => p.id !== editingProduct.id && (p.slug?.toLowerCase() === cleanSlug.toLowerCase() || slugify(p.name) === cleanSlug)
+    );
+    if (collision) {
+      toast({
+        title: "Slug already in use",
+        description: "This slug is already used by another product. Please adjust the slug.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
+      const mainImage = featuredImage && productImages.includes(featuredImage) ? featuredImage : productImages[0];
+      // Save all images ordered: featured image first, followed by remaining gallery images
+      const reorderedGallery = [mainImage, ...productImages.filter((img) => img !== mainImage)];
+
       const payload = {
-        slug: editingProduct.slug,
-        name: editingProduct.name,
-        description: editingProduct.description,
-        long_description: editingProduct.long_description,
+        slug: cleanSlug,
+        name: trimmedName,
+        description: editingProduct.description.trim(),
+        long_description: editingProduct.long_description.trim(),
         price: editingProduct.price,
         discount_price: editingProduct.discount_price ? editingProduct.discount_price : null,
         category: editingProduct.category,
         inventory_tag: editingProduct.inventory_tag,
-        image_day: editingProduct.image_day,
-        image_night: editingProduct.image_night || null,
-        dimensions: editingProduct.dimensions || null,
-        material: editingProduct.material,
+        image_day: mainImage,
+        image_night: reorderedGallery.length > 1 ? JSON.stringify(reorderedGallery) : (reorderedGallery[0] || null),
+        dimensions: editingProduct.dimensions?.trim() || null,
+        material: editingProduct.material.trim(),
         featured: editingProduct.featured,
       };
 
       if (editingProduct.id) {
         const { error } = await supabase.from("products").update(payload).eq("id", editingProduct.id);
         if (error) throw error;
-        toast({ title: "Product updated" });
+        toast({ title: "Product updated successfully" });
       } else {
         const { error } = await supabase.from("products").insert(payload);
         if (error) throw error;
-        toast({ title: "Product created" });
+        toast({ title: "Product created successfully" });
       }
       queryClient.invalidateQueries({ queryKey: ["products"] });
       setDialogOpen(false);
       setEditingProduct(emptyProduct);
+      setProductImages([]);
+      setFeaturedImage("");
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Error saving product", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -681,27 +825,51 @@ const Admin = () => {
   };
 
   const openEdit = (p: DbProduct) => {
+    // Parse multi-image gallery
+    let gallery: string[] = [];
+    if (p.image_night) {
+      try {
+        const parsed = JSON.parse(p.image_night);
+        if (Array.isArray(parsed)) {
+          gallery = parsed.filter((url): url is string => typeof url === "string" && url.trim().length > 0);
+        } else if (typeof parsed === "string") {
+          gallery = [parsed];
+        }
+      } catch {
+        if (p.image_night !== p.image_day) {
+          gallery = [p.image_night];
+        }
+      }
+    }
+
+    const allImages = Array.from(new Set([p.image_day, ...gallery].filter(Boolean)));
+
     setEditingProduct({
       id: p.id,
       slug: p.slug,
       name: p.name,
-      description: p.description,
-      long_description: p.long_description,
+      description: p.description || "",
+      long_description: p.long_description || "",
       price: p.price,
       discount_price: p.discount_price || 0,
       category: p.category as typeof emptyProduct.category,
       inventory_tag: p.inventory_tag as typeof emptyProduct.inventory_tag,
-      image_day: p.image_day,
+      image_day: p.image_day || "",
       image_night: p.image_night || "",
       dimensions: p.dimensions || "",
-      material: p.material,
+      material: p.material || "",
       featured: p.featured,
     });
+
+    setProductImages(allImages);
+    setFeaturedImage(p.image_day || allImages[0] || "");
     setDialogOpen(true);
   };
 
   const openNew = () => {
     setEditingProduct(emptyProduct);
+    setProductImages([]);
+    setFeaturedImage("");
     setDialogOpen(true);
   };
 
@@ -760,11 +928,36 @@ const Admin = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Name *</Label>
-                      <Input id="name" value={editingProduct.name} onChange={(e) => setEditingProduct((p) => ({ ...p, name: e.target.value }))} />
+                      <Input
+                        id="name"
+                        value={editingProduct.name}
+                        onChange={(e) => {
+                          const newName = e.target.value;
+                          setEditingProduct((p) => ({
+                            ...p,
+                            name: newName,
+                            // Auto-generate unique slug if creating new product or if slug matches old generated slug
+                            slug: !editingProduct.id
+                              ? generateUniqueSlug(newName, (products || []).map((x) => x.slug))
+                              : p.slug,
+                          }));
+                        }}
+                        placeholder="e.g. Floral Folk Lamp 8 Inches"
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="slug">Slug *</Label>
-                      <Input id="slug" value={editingProduct.slug} onChange={(e) => setEditingProduct((p) => ({ ...p, slug: e.target.value }))} placeholder="unique-product-id" />
+                      <Label htmlFor="slug">Slug (URL identifier) *</Label>
+                      <Input
+                        id="slug"
+                        value={editingProduct.slug}
+                        onChange={(e) =>
+                          setEditingProduct((p) => ({
+                            ...p,
+                            slug: slugify(e.target.value),
+                          }))
+                        }
+                        placeholder="floral-folk-lamp-8inches"
+                      />
                     </div>
                   </div>
 
@@ -781,7 +974,7 @@ const Admin = () => {
                   <div className="grid grid-cols-4 gap-3">
                     <div className="space-y-2">
                       <Label htmlFor="price">Price (₹) *</Label>
-                      <Input id="price" type="number" value={editingProduct.price} onChange={(e) => setEditingProduct((p) => ({ ...p, price: parseInt(e.target.value) || 0 }))} />
+                      <Input id="price" type="number" value={editingProduct.price || ""} onChange={(e) => setEditingProduct((p) => ({ ...p, price: parseInt(e.target.value) || 0 }))} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="discount_price">Discount Price (₹)</Label>
@@ -822,66 +1015,22 @@ const Admin = () => {
                     </div>
                   </div>
 
-                  {/* Image uploads */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Day Image *</Label>
-                      {editingProduct.image_day && (
-                        <img src={editingProduct.image_day} alt="Day" className="h-32 w-full rounded-md border object-contain bg-muted" />
-                      )}
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Image URL"
-                          value={editingProduct.image_day}
-                          onChange={(e) => setEditingProduct((p) => ({ ...p, image_day: e.target.value }))}
-                          className="flex-1"
-                        />
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "day")}
-                          />
-                          <Button type="button" variant="outline" size="icon" disabled={uploadingDay} asChild>
-                            <span>{uploadingDay ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}</span>
-                          </Button>
-                        </label>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Night Image</Label>
-                      {editingProduct.image_night && (
-                        <img src={editingProduct.image_night} alt="Night" className="h-32 w-full rounded-md border object-contain bg-foreground" />
-                      )}
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Image URL (optional)"
-                          value={editingProduct.image_night}
-                          onChange={(e) => setEditingProduct((p) => ({ ...p, image_night: e.target.value }))}
-                          className="flex-1"
-                        />
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "night")}
-                          />
-                          <Button type="button" variant="outline" size="icon" disabled={uploadingNight} asChild>
-                            <span>{uploadingNight ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}</span>
-                          </Button>
-                        </label>
-                      </div>
-                    </div>
+                  {/* Multi-Image Upload & Management */}
+                  <div className="pt-2 border-t">
+                    <ImageUploadManager
+                      images={productImages}
+                      onChange={setProductImages}
+                      featuredImage={featuredImage}
+                      onFeaturedChange={setFeaturedImage}
+                    />
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 pt-2">
                     <Switch
                       checked={editingProduct.featured}
                       onCheckedChange={(v) => setEditingProduct((p) => ({ ...p, featured: v }))}
                     />
-                    <Label>Featured Product</Label>
+                    <Label>Featured Product on Home Page</Label>
                   </div>
                 </div>
                 <DialogFooter>
@@ -1358,8 +1507,23 @@ const Admin = () => {
                           </TableCell>
                           <TableCell className="font-medium">{cat.name}</TableCell>
                           <TableCell className="font-mono text-xs">{cat.slug}</TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-500/10" onClick={() => handleDeleteCategory(cat.id)}>
+                          <TableCell className="text-right space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-amber-500 hover:text-amber-700 hover:bg-amber-500/10"
+                              onClick={() => handleOpenEditCategory(cat)}
+                              title="Edit Category"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-500/10"
+                              onClick={() => handleOpenDeleteCategory(cat)}
+                              title="Delete Category"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -1376,6 +1540,186 @@ const Admin = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* Edit Category Dialog */}
+          <Dialog open={editCatOpen} onOpenChange={setEditCatOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="font-serif">Edit Category</DialogTitle>
+              </DialogHeader>
+              {editingCat && (
+                <div className="space-y-4 py-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="editCatName">Category Name *</Label>
+                    <Input
+                      id="editCatName"
+                      value={editingCat.name}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditingCat((prev: any) =>
+                          prev
+                            ? {
+                                ...prev,
+                                name: val,
+                                // If slug was previously auto-slugified from name, keep it in sync
+                                slug:
+                                  prev.slug === slugify(prev.name)
+                                    ? slugify(val)
+                                    : prev.slug,
+                              }
+                            : null
+                        );
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editCatSlug">Category Slug (URL-safe) *</Label>
+                    <Input
+                      id="editCatSlug"
+                      value={editingCat.slug}
+                      onChange={(e) =>
+                        setEditingCat((prev: any) =>
+                          prev ? { ...prev, slug: slugify(e.target.value) } : null
+                        )
+                      }
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Note: Updating the slug will automatically update all existing products in this category.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editCatOrder">Display Order</Label>
+                    <Input
+                      id="editCatOrder"
+                      type="number"
+                      value={editingCat.display_order}
+                      onChange={(e) =>
+                        setEditingCat((prev: any) =>
+                          prev ? { ...prev, display_order: parseInt(e.target.value) || 1 } : null
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Category Thumbnail Image</Label>
+                    {editingCat.image_url && (
+                      <img
+                        src={editingCat.image_url}
+                        alt="Preview"
+                        className="h-24 w-full rounded-md border object-cover bg-muted"
+                      />
+                    )}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Image URL"
+                        value={editingCat.image_url}
+                        onChange={(e) =>
+                          setEditingCat((prev: any) =>
+                            prev ? { ...prev, image_url: e.target.value } : null
+                          )
+                        }
+                        className="flex-1 text-sm"
+                      />
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setUploadingEditCatImg(true);
+                            try {
+                              const ext = file.name.split(".").pop();
+                              const path = `cat_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+                              const { error } = await supabase.storage.from("product-images").upload(path, file);
+                              if (error) throw error;
+                              const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+                              setEditingCat((prev: any) => prev ? { ...prev, image_url: publicUrl } : null);
+                              toast({ title: "Category image uploaded" });
+                            } catch (err: any) {
+                              toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+                            } finally {
+                              setUploadingEditCatImg(false);
+                            }
+                          }}
+                        />
+                        <Button type="button" variant="outline" size="icon" disabled={uploadingEditCatImg} asChild>
+                          <span>{uploadingEditCatImg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}</span>
+                        </Button>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditCatOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                  onClick={handleSaveEditedCategory}
+                  disabled={savingCat}
+                >
+                  {savingCat && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Safe Delete Category AlertDialog */}
+          <AlertDialog open={deleteCatDialogOpen} onOpenChange={setDeleteCatDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="font-serif">
+                  Delete Category: {catToDelete?.name}?
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-2 text-sm text-muted-foreground pt-2">
+                    <p>
+                      Are you sure you want to permanently delete the <strong>{catToDelete?.name}</strong> category?
+                    </p>
+                    {(() => {
+                      const linked = products?.filter((p) => p.category === catToDelete?.slug) || [];
+                      if (linked.length > 0) {
+                        return (
+                          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-md text-amber-900 dark:text-amber-200">
+                            <p className="font-semibold flex items-center gap-1">
+                              ⚠️ Warning: {linked.length} product{linked.length > 1 ? "s are" : " is"} currently in this category:
+                            </p>
+                            <p className="text-xs mt-1">
+                              {linked.slice(0, 4).map((p) => p.name).join(", ")}
+                              {linked.length > 4 ? ` and ${linked.length - 4} more` : ""}
+                            </p>
+                            <p className="text-xs mt-1 text-muted-foreground">
+                              These products will remain in your database, but they may not show under this category in filters unless re-categorized.
+                            </p>
+                          </div>
+                        );
+                      }
+                      return (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          ✓ No products are currently assigned to this category. Safe to delete.
+                        </p>
+                      );
+                    })()}
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deletingCat}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                  onClick={handleConfirmDeleteCategory}
+                  disabled={deletingCat}
+                >
+                  {deletingCat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                  Confirm Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
 
         <TabsContent value="videos">

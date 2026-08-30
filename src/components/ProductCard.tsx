@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Product } from "@/data/products";
 
+import { slugify } from "@/lib/slugify";
+
 const inventoryLabels: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
   "in-stock": { label: "In Stock", variant: "outline" },
   "made-to-order": { label: "Made to Order", variant: "secondary" },
@@ -11,17 +13,19 @@ const inventoryLabels: Record<string, { label: string; variant: "default" | "sec
 const formatPrice = (p: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(p);
 
-const ProductCard = ({ product }: { product: Product }) => {
+const ProductCard = ({ product }: { product: any }) => {
   const tag = inventoryLabels[product.inventoryTag] || { label: "In Stock", variant: "outline" };
+  const targetSlug = product.slug ? slugify(product.slug) : slugify(product.name || product.id);
+  const displayImage = product.featuredImage || (typeof product.images === 'object' && !Array.isArray(product.images) ? product.images?.day : product.images?.[0]) || "/images/products/big-ganesha.jpg";
 
   return (
     <Link
-      to={`/product/${product.slug || product.id}`}
+      to={`/product/${targetSlug}`}
       className="group block overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-lg"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-muted">
         <img
-          src={product.images.day}
+          src={displayImage}
           alt={product.name}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
