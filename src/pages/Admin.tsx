@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, Upload, Shield, Loader2, Package, MessageCircle, Mail, Image, Video, BookOpen, Calendar, Award, GraduationCap } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Shield, Loader2, Package, MessageCircle, Mail, Image, Video, BookOpen, Calendar, Award, GraduationCap, Star, Users, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/context/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useProducts, DbProduct } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
+import { useWorkshops, useWorkshopRegistrations, useGroupEnquiries, useWorkshopTestimonials, useWorkshopSettings, WorkshopItem } from "@/hooks/useWorkshops";
+import { workshopStorage } from "@/lib/workshopStorage";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -535,97 +537,182 @@ const Admin = () => {
     }
   };
 
-  const handleAddWorkshop = async () => {
-    if (!newWsTitle.trim() || !newWsStartDate || !newWsLocation.trim()) {
-      toast({
-        title: "Missing fields",
-        description: "Workshop Title, Start Date, and Place/Location are required.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setSavingWs(true);
-    try {
-      const timingsValue = newWsTimings.trim() || "10:00 AM – 1:30 PM";
-      const { error } = await supabase.from("events").insert({
-        title: newWsTitle.trim(),
-        description: newWsDesc.trim(),
-        location: newWsLocation.trim(),
-        start_date: newWsStartDate,
-        end_date: newWsEndDate || newWsStartDate,
-        stall_no: timingsValue,
-        image_url: newWsImage.trim() || null,
-      });
-      if (error) throw error;
-      toast({ title: "Workshop added successfully" });
-      setNewWsTitle("");
-      setNewWsDesc("");
-      setNewWsLocation("");
-      setNewWsStartDate("");
-      setNewWsEndDate("");
-      setNewWsTimings("");
-      setNewWsImage("");
-      setNewWsVideo("");
-      fetchEvents();
-      queryClient.invalidateQueries({ queryKey: ["workshops"] });
-      queryClient.invalidateQueries({ queryKey: ["events"] });
-    } catch (err: any) {
-      toast({ title: "Error adding workshop", description: err.message, variant: "destructive" });
-    } finally {
-      setSavingWs(false);
-    }
-  };
+  // Workshops Management Hooks & State
+  const { data: adminWorkshops } = useWorkshops();
+  const { data: adminRegistrations } = useWorkshopRegistrations();
+  const { data: adminGroupEnquiries } = useGroupEnquiries();
+  const { data: adminTestimonials } = useWorkshopTestimonials();
+  const { data: adminSettings } = useWorkshopSettings();
 
-  const handleOpenEditWorkshop = (ws: any) => {
+  const [wsSubTab, setWsSubTab] = useState<"workshops" | "registrations" | "enquiries" | "testimonials" | "settings">("workshops");
+  const [editingWorkshopImages, setEditingWorkshopImages] = useState<string[]>([]);
+  const [editingWorkshopFeatured, setEditingWorkshopFeatured] = useState<string>("");
+
+  // Testimonial add state
+  const [newTestName, setNewTestName] = useState("");
+  const [newTestRole, setNewTestRole] = useState("");
+  const [newTestReview, setNewTestReview] = useState("");
+  const [newTestRating, setNewTestRating] = useState(5);
+
+  // Settings state
+  const [settingHeroTitle, setSettingHeroTitle] = useState("");
+  const [settingHeroSubtitle, setSettingHeroSubtitle] = useState("");
+  const [settingInstructorName, setSettingInstructorName] = useState("");
+  const [settingInstructorExp, setSettingInstructorExp] = useState("");
+  const [settingInstructorBio, setSettingInstructorBio] = useState("");
+
+  const handleOpenEditWorkshop = (ws: WorkshopItem) => {
+    const wsImgs = ws.images && ws.images.length > 0 ? ws.images : [ws.image_url];
     setEditingWs({
-      id: ws.id,
-      title: ws.title || "",
-      description: ws.description || "",
-      location: ws.location || "",
-      start_date: ws.start_date || "",
-      end_date: ws.end_date || "",
-      stall_no: ws.stall_no || "10:00 AM – 1:30 PM",
-      image_url: ws.image_url || "",
+      ...ws,
+      images: wsImgs,
+      what_you_will_learn: ws.what_you_will_learn || [],
+      what_is_included: ws.what_is_included || [],
     });
+    setEditingWorkshopImages(wsImgs);
+    setEditingWorkshopFeatured(ws.image_url || wsImgs[0] || "");
     setEditWsOpen(true);
   };
 
-  const handleSaveEditedWorkshop = async () => {
-    if (!editingWs || !editingWs.title.trim() || !editingWs.start_date || !editingWs.location.trim()) {
+  const handleOpenNewWorkshop = () => {
+    const emptyWs: Partial<WorkshopItem> = {
+      title: "",
+      slug: "",
+      short_description: "",
+      full_description: "",
+      date: new Date().toISOString().split("T")[0],
+      end_date: new Date().toISOString().split("T")[0],
+      time: "10:30 AM – 2:00 PM",
+      duration: "3.5 Hours",
+      location: "Jeekavandlapalli, Karnataka",
+      price: 1999,
+      total_seats: 25,
+      status: "upcoming",
+      image_url: "/images/products/big-ganesha.jpg",
+      images: ["/images/products/big-ganesha.jpg"],
+      video_url: "",
+      instructor_name: "Sindhe Vijay",
+      instructor_role: "8th-Generation Master Artisan",
+      instructor_experience: "25+ Years Heritage",
+      instructor_bio: "State Awardee Master Craftsman preserving Thogalu Gombe.",
+      age_group: "12 Years & Above",
+    };
+    setEditingWs(emptyWs);
+    setEditingWorkshopImages(["/images/products/big-ganesha.jpg"]);
+    setEditingWorkshopFeatured("/images/products/big-ganesha.jpg");
+    setEditWsOpen(true);
+  };
+
+  const handleSaveWorkshopData = async () => {
+    if (!editingWs || !editingWs.title?.trim() || !editingWs.date || !editingWs.location?.trim()) {
       toast({
         title: "Missing fields",
-        description: "Title, Start Date, and Place/Location are required.",
+        description: "Workshop Title, Date, and Location are required.",
         variant: "destructive",
       });
       return;
     }
     setSavingEditWs(true);
     try {
-      const { error } = await supabase
-        .from("events")
-        .update({
-          title: editingWs.title.trim(),
-          description: editingWs.description.trim(),
-          location: editingWs.location.trim(),
-          start_date: editingWs.start_date,
-          end_date: editingWs.end_date || editingWs.start_date,
-          stall_no: editingWs.stall_no.trim() || "10:00 AM – 1:30 PM",
-          image_url: editingWs.image_url?.trim() || null,
-        })
-        .eq("id", editingWs.id);
+      const mainImg = editingWorkshopFeatured || editingWorkshopImages[0] || "/images/products/big-ganesha.jpg";
+      workshopStorage.saveWorkshop({
+        ...editingWs,
+        title: editingWs.title.trim(),
+        image_url: mainImg,
+        images: editingWorkshopImages.length > 0 ? editingWorkshopImages : [mainImg],
+      });
 
-      if (error) throw error;
-      toast({ title: "Workshop updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["workshops_v2"] });
+      queryClient.invalidateQueries({ queryKey: ["workshops"] });
+      queryClient.invalidateQueries({ queryKey: ["workshop"] });
+
+      toast({ title: "Workshop saved successfully" });
       setEditWsOpen(false);
       setEditingWs(null);
-      fetchEvents();
-      queryClient.invalidateQueries({ queryKey: ["workshops"] });
-      queryClient.invalidateQueries({ queryKey: ["events"] });
     } catch (err: any) {
-      toast({ title: "Error updating workshop", description: err.message, variant: "destructive" });
+      toast({ title: "Error saving workshop", description: err.message, variant: "destructive" });
     } finally {
       setSavingEditWs(false);
     }
+  };
+
+  const handleDeleteWorkshopData = (id: string) => {
+    workshopStorage.deleteWorkshop(id);
+    queryClient.invalidateQueries({ queryKey: ["workshops_v2"] });
+    queryClient.invalidateQueries({ queryKey: ["workshops"] });
+    toast({ title: "Workshop deleted" });
+  };
+
+  const handleToggleWorkshopStatus = (ws: WorkshopItem, newStatus: WorkshopItem["status"]) => {
+    workshopStorage.saveWorkshop({
+      ...ws,
+      status: newStatus,
+    });
+    queryClient.invalidateQueries({ queryKey: ["workshops_v2"] });
+    toast({ title: `Workshop status updated to ${newStatus}` });
+  };
+
+  const handleUpdateRegStatus = (regId: string, newStatus: any) => {
+    workshopStorage.updateRegistrationStatus(regId, newStatus);
+    queryClient.invalidateQueries({ queryKey: ["workshop_registrations"] });
+    queryClient.invalidateQueries({ queryKey: ["workshops_v2"] });
+    toast({ title: "Registration status updated" });
+  };
+
+  const handleDeleteReg = (regId: string) => {
+    workshopStorage.deleteRegistration(regId);
+    queryClient.invalidateQueries({ queryKey: ["workshop_registrations"] });
+    queryClient.invalidateQueries({ queryKey: ["workshops_v2"] });
+    toast({ title: "Registration deleted" });
+  };
+
+  const handleUpdateGroupEnquiryStatus = (enquiryId: string, newStatus: any) => {
+    workshopStorage.updateGroupEnquiryStatus(enquiryId, newStatus);
+    queryClient.invalidateQueries({ queryKey: ["group_enquiries"] });
+    toast({ title: "Group enquiry status updated" });
+  };
+
+  const handleDeleteGroupEnquiry = (enquiryId: string) => {
+    workshopStorage.deleteGroupEnquiry(enquiryId);
+    queryClient.invalidateQueries({ queryKey: ["group_enquiries"] });
+    toast({ title: "Group enquiry deleted" });
+  };
+
+  const handleAddTestimonialData = () => {
+    if (!newTestName.trim() || !newTestReview.trim()) {
+      toast({ title: "Missing fields", description: "Name and Review are required.", variant: "destructive" });
+      return;
+    }
+    workshopStorage.saveTestimonial({
+      name: newTestName.trim(),
+      role: newTestRole.trim() || "Participant",
+      review: newTestReview.trim(),
+      rating: newTestRating,
+      is_active: true,
+    });
+    queryClient.invalidateQueries({ queryKey: ["workshop_testimonials"] });
+    setNewTestName("");
+    setNewTestRole("");
+    setNewTestReview("");
+    toast({ title: "Testimonial added" });
+  };
+
+  const handleDeleteTestimonialData = (id: string) => {
+    workshopStorage.deleteTestimonial(id);
+    queryClient.invalidateQueries({ queryKey: ["workshop_testimonials"] });
+    toast({ title: "Testimonial deleted" });
+  };
+
+  const handleSaveWorkshopSettings = () => {
+    workshopStorage.saveSettings({
+      hero_title: settingHeroTitle || adminSettings?.hero_title,
+      hero_subtitle: settingHeroSubtitle || adminSettings?.hero_subtitle,
+      instructor_name: settingInstructorName || adminSettings?.instructor_name,
+      instructor_experience: settingInstructorExp || adminSettings?.instructor_experience,
+      instructor_bio: settingInstructorBio || adminSettings?.instructor_bio,
+    });
+    queryClient.invalidateQueries({ queryKey: ["workshop_settings"] });
+    toast({ title: "Workshop settings saved" });
   };
 
   const fetchAchievements = async () => {
@@ -2252,340 +2339,758 @@ const Admin = () => {
         </TabsContent>
 
         {/* ========================================================================= */}
-        {/* Workshops Management Tab */}
+        {/* Workshops Management Control Center */}
         {/* ========================================================================= */}
         <TabsContent value="workshops_admin">
-          <div className="grid gap-6 md:grid-cols-3">
-            <Card className="md:col-span-1">
-              <CardHeader>
-                <CardTitle className="font-serif">Add Workshop / Masterclass</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="wsTitle">Workshop Title *</Label>
-                  <Input
-                    id="wsTitle"
-                    placeholder="e.g. Masterclass in Traditional Leather Shadow Puppetry"
-                    value={newWsTitle}
-                    onChange={(e) => setNewWsTitle(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wsDesc">Description & Curriculum</Label>
-                  <Textarea
-                    id="wsDesc"
-                    rows={3}
-                    placeholder="Describe what participants will learn, materials provided, and take-home puppets..."
-                    value={newWsDesc}
-                    onChange={(e) => setNewWsDesc(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wsLocation">Place / Venue / City *</Label>
-                  <Input
-                    id="wsLocation"
-                    placeholder="e.g. Chitrakala Parishath, Bangalore"
-                    value={newWsLocation}
-                    onChange={(e) => setNewWsLocation(e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="wsStart">Start Date *</Label>
-                    <Input
-                      id="wsStart"
-                      type="date"
-                      value={newWsStartDate}
-                      onChange={(e) => setNewWsStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="wsEnd">End Date</Label>
-                    <Input
-                      id="wsEnd"
-                      type="date"
-                      value={newWsEndDate}
-                      onChange={(e) => setNewWsEndDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wsTimings">Timings (e.g. 10:30 AM – 2:00 PM)</Label>
-                  <Input
-                    id="wsTimings"
-                    placeholder="e.g. 10:30 AM – 2:00 PM"
-                    value={newWsTimings}
-                    onChange={(e) => setNewWsTimings(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Workshop Banner / Photo</Label>
-                  {newWsImage && (
-                    <img
-                      src={newWsImage}
-                      alt="Preview"
-                      className="h-28 w-full rounded-md border object-cover bg-muted"
-                    />
-                  )}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Image URL"
-                      value={newWsImage}
-                      onChange={(e) => setNewWsImage(e.target.value)}
-                      className="flex-1"
-                    />
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => e.target.files?.[0] && handleUploadWsImg(e.target.files[0], false)}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        disabled={uploadingWsImg}
-                        asChild
-                      >
-                        <span>
-                          {uploadingWsImg ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Upload className="h-4 w-4" />
-                          )}
-                        </span>
-                      </Button>
-                    </label>
-                  </div>
-                </div>
+          <div className="space-y-6">
+            {/* Sub-Tabs Navigation */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+              <div className="flex flex-wrap gap-1.5 bg-muted/60 p-1 rounded-lg">
                 <Button
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
-                  onClick={handleAddWorkshop}
-                  disabled={savingWs}
+                  variant={wsSubTab === "workshops" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setWsSubTab("workshops")}
+                  className="gap-1.5 text-xs font-semibold"
                 >
-                  {savingWs && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Publish Workshop
+                  <GraduationCap className="h-3.5 w-3.5" />
+                  Workshops ({adminWorkshops?.length || 0})
                 </Button>
-              </CardContent>
-            </Card>
+                <Button
+                  variant={wsSubTab === "registrations" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setWsSubTab("registrations")}
+                  className="gap-1.5 text-xs font-semibold"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  Bookings / Registrations ({adminRegistrations?.length || 0})
+                </Button>
+                <Button
+                  variant={wsSubTab === "enquiries" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setWsSubTab("enquiries")}
+                  className="gap-1.5 text-xs font-semibold"
+                >
+                  <Package className="h-3.5 w-3.5" />
+                  Group Enquiries ({adminGroupEnquiries?.length || 0})
+                </Button>
+                <Button
+                  variant={wsSubTab === "testimonials" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setWsSubTab("testimonials")}
+                  className="gap-1.5 text-xs font-semibold"
+                >
+                  <Star className="h-3.5 w-3.5" />
+                  Testimonials ({adminTestimonials?.length || 0})
+                </Button>
+                <Button
+                  variant={wsSubTab === "settings" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setWsSubTab("settings")}
+                  className="gap-1.5 text-xs font-semibold"
+                >
+                  <Award className="h-3.5 w-3.5" />
+                  Page Settings
+                </Button>
+              </div>
 
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle className="font-serif">Current Workshops</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {eventsLoading ? (
-                  <div className="flex justify-center py-10">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              {wsSubTab === "workshops" && (
+                <Button onClick={handleOpenNewWorkshop} className="gap-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold">
+                  <Plus className="h-4 w-4" /> Add Workshop
+                </Button>
+              )}
+            </div>
+
+            {/* ------------------------------------------------------------- */}
+            {/* SUB-TAB 1: WORKSHOPS CATALOG & CRUD */}
+            {/* ------------------------------------------------------------- */}
+            {wsSubTab === "workshops" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="font-serif text-xl">All Workshops & Masterclasses</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-lg border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Image</TableHead>
+                          <TableHead>Title & URL Slug</TableHead>
+                          <TableHead>Dates & Timings</TableHead>
+                          <TableHead>Venue / Place</TableHead>
+                          <TableHead>Fee</TableHead>
+                          <TableHead>Seats (Booked / Total)</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(adminWorkshops || []).map((ws) => {
+                          const available = ws.available_seats !== undefined ? ws.available_seats : (ws.total_seats || 20);
+                          const booked = ws.booked_seats || 0;
+
+                          return (
+                            <TableRow key={ws.id}>
+                              <TableCell>
+                                <img
+                                  src={ws.image_url}
+                                  alt={ws.title}
+                                  className="h-12 w-16 object-cover rounded-md border bg-muted"
+                                />
+                              </TableCell>
+                              <TableCell className="max-w-[220px]">
+                                <p className="font-semibold text-sm line-clamp-1">{ws.title}</p>
+                                <p className="text-[11px] font-mono text-muted-foreground line-clamp-1">/workshop/{ws.slug}</p>
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                <p className="font-medium">{ws.date}</p>
+                                <p className="text-muted-foreground">{ws.time}</p>
+                              </TableCell>
+                              <TableCell className="text-xs max-w-[150px] truncate" title={ws.location}>
+                                {ws.location}
+                              </TableCell>
+                              <TableCell className="font-serif font-bold text-amber-600 dark:text-amber-400">
+                                ₹{ws.price}
+                              </TableCell>
+                              <TableCell>
+                                <div className="space-y-1 text-xs">
+                                  <Badge
+                                    variant="outline"
+                                    className={available <= 0 ? "text-red-500 border-red-500/30" : "text-green-600 border-green-500/30"}
+                                  >
+                                    {booked} booked / {available} left
+                                  </Badge>
+                                  <p className="text-[10px] text-muted-foreground">Total: {ws.total_seats}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  value={ws.status}
+                                  onValueChange={(val: any) => handleToggleWorkshopStatus(ws, val)}
+                                >
+                                  <SelectTrigger className="h-8 text-xs w-28">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="upcoming">Upcoming</SelectItem>
+                                    <SelectItem value="ongoing">Ongoing (Live)</SelectItem>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="full">Full</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                    <SelectItem value="inactive">Inactive</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell className="text-right space-x-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-amber-500 hover:text-amber-700 hover:bg-amber-500/10"
+                                  onClick={() => handleOpenEditWorkshop(ws)}
+                                  title="Edit Workshop"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleDeleteWorkshopData(ws.id)}
+                                  title="Delete Workshop"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {(!adminWorkshops || adminWorkshops.length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                              No workshops published yet. Click "Add Workshop" to create one.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {eventsList.map((ws) => (
-                      <Card key={ws.id} className="overflow-hidden flex flex-col justify-between">
-                        <div>
-                          {ws.image_url && (
-                            <div className="h-36 bg-muted overflow-hidden">
-                              <img
-                                src={ws.image_url}
-                                alt={ws.title}
-                                className="w-full h-full object-cover"
-                              />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* SUB-TAB 2: WORKSHOP REGISTRATIONS (BOOKINGS) */}
+            {/* ------------------------------------------------------------- */}
+            {wsSubTab === "registrations" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="font-serif text-xl">Participant Registrations</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-lg border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Booking ID</TableHead>
+                          <TableHead>Participant</TableHead>
+                          <TableHead>Contact (WhatsApp / Email)</TableHead>
+                          <TableHead>Workshop Title</TableHead>
+                          <TableHead>Seats</TableHead>
+                          <TableHead>Date Booked</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(adminRegistrations || []).map((reg) => (
+                          <TableRow key={reg.id}>
+                            <TableCell className="font-mono text-xs font-bold text-amber-600">
+                              {reg.id}
+                            </TableCell>
+                            <TableCell>
+                              <p className="font-semibold text-sm">{reg.full_name}</p>
+                              {reg.message && (
+                                <p className="text-[11px] text-muted-foreground italic line-clamp-1">
+                                  "{reg.message}"
+                                </p>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-xs space-y-0.5">
+                              <p className="font-medium text-foreground">{reg.phone}</p>
+                              <p className="text-muted-foreground">{reg.email}</p>
+                            </TableCell>
+                            <TableCell className="text-xs max-w-[180px] font-medium truncate" title={reg.workshop_title}>
+                              {reg.workshop_title}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="font-bold">
+                                {reg.seats_booked} seat(s)
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {new Date(reg.created_at).toLocaleDateString("en-IN")}
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={reg.status}
+                                onValueChange={(val: any) => handleUpdateRegStatus(reg.id, val)}
+                              >
+                                <SelectTrigger className={`h-8 text-xs w-28 font-semibold ${
+                                  reg.status === "Confirmed"
+                                    ? "text-green-600 border-green-500/40"
+                                    : reg.status === "Cancelled"
+                                    ? "text-red-500 border-red-500/40"
+                                    : "text-amber-600"
+                                }`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Pending">Pending</SelectItem>
+                                  <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                  <SelectItem value="Completed">Completed</SelectItem>
+                                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="text-right space-x-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-green-600 hover:bg-green-500/10"
+                                asChild
+                                title="Chat on WhatsApp"
+                              >
+                                <a
+                                  href={`https://wa.me/${reg.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                                    `Hello ${reg.full_name}, confirming your booking (${reg.id}) for "${reg.workshop_title}" with Sindhe Vijay Leather Puppets!`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <MessageCircle className="h-4 w-4 fill-current" />
+                                </a>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteReg(reg.id)}
+                                title="Delete Registration"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {(!adminRegistrations || adminRegistrations.length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                              No participant registrations yet.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* SUB-TAB 3: GROUP WORKSHOP ENQUIRIES */}
+            {/* ------------------------------------------------------------- */}
+            {wsSubTab === "enquiries" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="font-serif text-xl">School, College & Corporate Enquiries</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-lg border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Ref ID</TableHead>
+                          <TableHead>Organization</TableHead>
+                          <TableHead>Contact Person</TableHead>
+                          <TableHead>Phone & Email</TableHead>
+                          <TableHead>Attendees</TableHead>
+                          <TableHead>Proposed Date & Venue</TableHead>
+                          <TableHead>Message</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(adminGroupEnquiries || []).map((enq) => (
+                          <TableRow key={enq.id}>
+                            <TableCell className="font-mono text-xs font-bold text-amber-600">
+                              {enq.id}
+                            </TableCell>
+                            <TableCell className="font-semibold text-sm">
+                              {enq.org_name}
+                            </TableCell>
+                            <TableCell className="text-xs font-medium">
+                              {enq.contact_person}
+                            </TableCell>
+                            <TableCell className="text-xs space-y-0.5">
+                              <p className="font-medium text-foreground">{enq.phone}</p>
+                              <p className="text-muted-foreground">{enq.email}</p>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{enq.participants_count} people</Badge>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <p className="font-medium">{enq.preferred_date}</p>
+                              <p className="text-muted-foreground">{enq.location}</p>
+                            </TableCell>
+                            <TableCell className="text-xs max-w-[200px] text-muted-foreground line-clamp-2" title={enq.message}>
+                              {enq.message || "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={enq.status}
+                                onValueChange={(val: any) => handleUpdateGroupEnquiryStatus(enq.id, val)}
+                              >
+                                <SelectTrigger className="h-8 text-xs w-28">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Pending">Pending</SelectItem>
+                                  <SelectItem value="Contacted">Contacted</SelectItem>
+                                  <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                  <SelectItem value="Completed">Completed</SelectItem>
+                                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="text-right space-x-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-green-600 hover:bg-green-500/10"
+                                asChild
+                                title="Chat on WhatsApp"
+                              >
+                                <a
+                                  href={`https://wa.me/${enq.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                                    `Hello ${enq.contact_person}, regarding your group workshop request for ${enq.org_name} from Sindhe Vijay Leather Puppets!`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <MessageCircle className="h-4 w-4 fill-current" />
+                                </a>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteGroupEnquiry(enq.id)}
+                                title="Delete Enquiry"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {(!adminGroupEnquiries || adminGroupEnquiries.length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+                              No group or institutional workshop enquiries received yet.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* SUB-TAB 4: WORKSHOP TESTIMONIALS */}
+            {/* ------------------------------------------------------------- */}
+            {wsSubTab === "testimonials" && (
+              <div className="grid gap-6 md:grid-cols-3">
+                <Card className="md:col-span-1">
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg">Add Participant Review</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="testName">Participant Name *</Label>
+                      <Input
+                        id="testName"
+                        placeholder="e.g. Priya Sharma"
+                        value={newTestName}
+                        onChange={(e) => setNewTestName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="testRole">Role / Institution</Label>
+                      <Input
+                        id="testRole"
+                        placeholder="e.g. Design Student, Bengaluru"
+                        value={newTestRole}
+                        onChange={(e) => setNewTestRole(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="testRating">Star Rating (1-5)</Label>
+                      <Input
+                        id="testRating"
+                        type="number"
+                        min="1"
+                        max="5"
+                        value={newTestRating}
+                        onChange={(e) => setNewTestRating(Number(e.target.value) || 5)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="testReview">Review Text *</Label>
+                      <Textarea
+                        id="testReview"
+                        rows={3}
+                        placeholder="Write testimonial..."
+                        value={newTestReview}
+                        onChange={(e) => setNewTestReview(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                      onClick={handleAddTestimonialData}
+                    >
+                      Add Testimonial
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg">Current Testimonials</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {(adminTestimonials || []).map((test) => (
+                        <Card key={test.id} className="p-4 flex flex-col justify-between border space-y-3">
+                          <div>
+                            <div className="flex items-center gap-1 text-amber-500 mb-2">
+                              {Array.from({ length: test.rating || 5 }).map((_, i) => (
+                                <Star key={i} className="h-3.5 w-3.5 fill-current" />
+                              ))}
                             </div>
-                          )}
-                          <div className="p-4 space-y-2">
-                            <h4 className="font-serif text-base font-bold line-clamp-2">{ws.title}</h4>
-                            <div className="text-xs space-y-1 text-muted-foreground">
-                              <p className="font-medium text-foreground">
-                                📅 {ws.start_date} {ws.end_date && ws.end_date !== ws.start_date ? `– ${ws.end_date}` : ""}
-                              </p>
-                              <p>⏰ {ws.stall_no || "10:00 AM – 1:30 PM"}</p>
-                              <p>📍 {ws.location}</p>
-                            </div>
-                            <p className="text-xs text-muted-foreground line-clamp-2 mt-2">
-                              {ws.description}
-                            </p>
+                            <p className="text-xs text-muted-foreground italic">"{test.review}"</p>
                           </div>
-                        </div>
-                        <div className="p-3 border-t flex justify-end gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-amber-500 hover:text-amber-700 hover:bg-amber-500/10"
-                            onClick={() => handleOpenEditWorkshop(ws)}
-                            title="Edit Workshop"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteEvent(ws.id)}
-                            title="Delete Workshop"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </Card>
-                    ))}
-                    {eventsList.length === 0 && (
-                      <div className="col-span-full py-10 text-center text-muted-foreground border border-dashed rounded-lg">
-                        No workshops published yet.
-                      </div>
-                    )}
+                          <div className="flex items-center justify-between border-t pt-2 text-xs">
+                            <div>
+                              <p className="font-bold text-foreground">{test.name}</p>
+                              <p className="text-muted-foreground">{test.role}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive h-8 w-8"
+                              onClick={() => handleDeleteTestimonialData(test.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* SUB-TAB 5: WORKSHOP PAGE SETTINGS */}
+            {/* ------------------------------------------------------------- */}
+            {wsSubTab === "settings" && (
+              <Card className="max-w-2xl mx-auto">
+                <CardHeader>
+                  <CardTitle className="font-serif text-xl">Workshops Page Content & Instructor Bio</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="setHeroTitle">Hero Title</Label>
+                    <Input
+                      id="setHeroTitle"
+                      defaultValue={adminSettings?.hero_title}
+                      onChange={(e) => setSettingHeroTitle(e.target.value)}
+                    />
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="setHeroSub">Hero Subtitle</Label>
+                    <Textarea
+                      id="setHeroSub"
+                      rows={2}
+                      defaultValue={adminSettings?.hero_subtitle}
+                      onChange={(e) => setSettingHeroSubtitle(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="setInstName">Instructor Name</Label>
+                      <Input
+                        id="setInstName"
+                        defaultValue={adminSettings?.instructor_name}
+                        onChange={(e) => setSettingInstructorName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="setInstExp">Experience & Credential</Label>
+                      <Input
+                        id="setInstExp"
+                        defaultValue={adminSettings?.instructor_experience}
+                        onChange={(e) => setSettingInstructorExp(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="setInstBio">Instructor Biography</Label>
+                    <Textarea
+                      id="setInstBio"
+                      rows={4}
+                      defaultValue={adminSettings?.instructor_bio}
+                      onChange={(e) => setSettingInstructorBio(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                    onClick={handleSaveWorkshopSettings}
+                  >
+                    Save Page Settings
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
-          {/* Edit Workshop Dialog */}
+          {/* ============================================================= */}
+          {/* Add / Edit Workshop Dialog Modal */}
+          {/* ============================================================= */}
           <Dialog open={editWsOpen} onOpenChange={setEditWsOpen}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="font-serif">Edit Workshop</DialogTitle>
+                <DialogTitle className="font-serif text-2xl font-bold">
+                  {editingWs?.id ? "Edit Workshop / Masterclass" : "New Workshop / Masterclass"}
+                </DialogTitle>
               </DialogHeader>
               {editingWs && (
                 <div className="space-y-4 py-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="editWsTitle">Title *</Label>
-                    <Input
-                      id="editWsTitle"
-                      value={editingWs.title}
-                      onChange={(e) =>
-                        setEditingWs((prev: any) =>
-                          prev ? { ...prev, title: e.target.value } : null
-                        )
-                      }
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edWsTitle">Workshop Title *</Label>
+                      <Input
+                        id="edWsTitle"
+                        value={editingWs.title || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditingWs((p: any) => ({
+                            ...p,
+                            title: val,
+                            slug: p.slug || slugify(val),
+                          }));
+                        }}
+                        placeholder="e.g. Masterclass in Traditional Leather Shadow Puppetry"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edWsSlug">URL Slug (Identifier) *</Label>
+                      <Input
+                        id="edWsSlug"
+                        value={editingWs.slug || ""}
+                        onChange={(e) => setEditingWs((p: any) => ({ ...p, slug: slugify(e.target.value) }))}
+                        placeholder="traditional-leather-shadow-puppetry"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="editWsDesc">Description</Label>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edWsShortDesc">Short Summary (shown on cards)</Label>
                     <Textarea
-                      id="editWsDesc"
-                      rows={3}
-                      value={editingWs.description}
-                      onChange={(e) =>
-                        setEditingWs((prev: any) =>
-                          prev ? { ...prev, description: e.target.value } : null
-                        )
-                      }
+                      id="edWsShortDesc"
+                      rows={2}
+                      value={editingWs.short_description || ""}
+                      onChange={(e) => setEditingWs((p: any) => ({ ...p, short_description: e.target.value }))}
+                      placeholder="Brief overview of the masterclass..."
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="editWsLoc">Place / Location *</Label>
-                    <Input
-                      id="editWsLoc"
-                      value={editingWs.location}
-                      onChange={(e) =>
-                        setEditingWs((prev: any) =>
-                          prev ? { ...prev, location: e.target.value } : null
-                        )
-                      }
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edWsFullDesc">Full Workshop Description & Story</Label>
+                    <Textarea
+                      id="edWsFullDesc"
+                      rows={4}
+                      value={editingWs.full_description || ""}
+                      onChange={(e) => setEditingWs((p: any) => ({ ...p, full_description: e.target.value }))}
+                      placeholder="Detailed breakdown of the workshop experience..."
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="editWsStart">Start Date *</Label>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edWsDate">Start Date *</Label>
                       <Input
-                        id="editWsStart"
+                        id="edWsDate"
                         type="date"
-                        value={editingWs.start_date}
-                        onChange={(e) =>
-                          setEditingWs((prev: any) =>
-                            prev ? { ...prev, start_date: e.target.value } : null
-                          )
-                        }
+                        value={editingWs.date || ""}
+                        onChange={(e) => setEditingWs((p: any) => ({ ...p, date: e.target.value }))}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="editWsEnd">End Date</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edWsEndDate">End Date (optional)</Label>
                       <Input
-                        id="editWsEnd"
+                        id="edWsEndDate"
                         type="date"
-                        value={editingWs.end_date}
-                        onChange={(e) =>
-                          setEditingWs((prev: any) =>
-                            prev ? { ...prev, end_date: e.target.value } : null
-                          )
-                        }
+                        value={editingWs.end_date || ""}
+                        onChange={(e) => setEditingWs((p: any) => ({ ...p, end_date: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edWsStatus">Status</Label>
+                      <Select
+                        value={editingWs.status || "upcoming"}
+                        onValueChange={(val: any) => setEditingWs((p: any) => ({ ...p, status: val }))}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="upcoming">Upcoming</SelectItem>
+                          <SelectItem value="ongoing">Ongoing (Live)</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="full">Full (Sold Out)</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edWsTime">Time (e.g. 10:30 AM – 2:30 PM)</Label>
+                      <Input
+                        id="edWsTime"
+                        value={editingWs.time || ""}
+                        onChange={(e) => setEditingWs((p: any) => ({ ...p, time: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edWsDuration">Duration</Label>
+                      <Input
+                        id="edWsDuration"
+                        placeholder="e.g. 4 Hours"
+                        value={editingWs.duration || ""}
+                        onChange={(e) => setEditingWs((p: any) => ({ ...p, duration: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edWsPrice">Fee (₹ per person) *</Label>
+                      <Input
+                        id="edWsPrice"
+                        type="number"
+                        value={editingWs.price || ""}
+                        onChange={(e) => setEditingWs((p: any) => ({ ...p, price: Number(e.target.value) || 0 }))}
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="editWsTimings">Timings</Label>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edWsSeats">Total Seats Available *</Label>
+                      <Input
+                        id="edWsSeats"
+                        type="number"
+                        value={editingWs.total_seats || 25}
+                        onChange={(e) => setEditingWs((p: any) => ({ ...p, total_seats: Number(e.target.value) || 10 }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edWsLoc">Place / Venue / City *</Label>
+                      <Input
+                        id="edWsLoc"
+                        value={editingWs.location || ""}
+                        onChange={(e) => setEditingWs((p: any) => ({ ...p, location: e.target.value }))}
+                        placeholder="e.g. Chitrakala Parishath, Bangalore"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edWsVideo">Video URL (YouTube Embed / MP4)</Label>
                     <Input
-                      id="editWsTimings"
-                      value={editingWs.stall_no}
-                      onChange={(e) =>
-                        setEditingWs((prev: any) =>
-                          prev ? { ...prev, stall_no: e.target.value } : null
-                        )
-                      }
-                      placeholder="e.g. 10:30 AM – 2:00 PM"
+                      id="edWsVideo"
+                      placeholder="https://www.youtube.com/embed/..."
+                      value={editingWs.video_url || ""}
+                      onChange={(e) => setEditingWs((p: any) => ({ ...p, video_url: e.target.value }))}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Workshop Image</Label>
-                    {editingWs.image_url && (
-                      <img
-                        src={editingWs.image_url}
-                        alt="Preview"
-                        className="h-24 w-full rounded-md border object-cover bg-muted"
-                      />
-                    )}
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Image URL"
-                        value={editingWs.image_url}
-                        onChange={(e) =>
-                          setEditingWs((prev: any) =>
-                            prev ? { ...prev, image_url: e.target.value } : null
-                          )
-                        }
-                        className="flex-1"
-                      />
-                      <label className="cursor-pointer">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) =>
-                            e.target.files?.[0] && handleUploadWsImg(e.target.files[0], true)
-                          }
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          disabled={uploadingEditWsImg}
-                          asChild
-                        >
-                          <span>
-                            {uploadingEditWsImg ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Upload className="h-4 w-4" />
-                            )}
-                          </span>
-                        </Button>
-                      </label>
-                    </div>
+
+                  {/* Multi-Image Upload & Featured Image Selector */}
+                  <div className="pt-2 border-t">
+                    <Label className="text-base font-semibold mb-2 block">
+                      Workshop Gallery Images (Featured Image first)
+                    </Label>
+                    <ImageUploadManager
+                      images={editingWorkshopImages}
+                      onChange={setEditingWorkshopImages}
+                      featuredImage={editingWorkshopFeatured}
+                      onFeaturedChange={setEditingWorkshopFeatured}
+                    />
                   </div>
                 </div>
               )}
-              <DialogFooter>
+              <DialogFooter className="pt-3">
                 <Button variant="outline" onClick={() => setEditWsOpen(false)}>
                   Cancel
                 </Button>
                 <Button
                   className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
-                  onClick={handleSaveEditedWorkshop}
+                  onClick={handleSaveWorkshopData}
                   disabled={savingEditWs}
                 >
                   {savingEditWs && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Changes
+                  Save Workshop
                 </Button>
               </DialogFooter>
             </DialogContent>
