@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Shield, Award, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,29 @@ const ProductDetail = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Randomize related products in category on every product view
+  const related = useMemo(() => {
+    if (!allProducts || !dbProduct) return [];
+
+    // Filter out the current product
+    const otherProducts = allProducts.filter(
+      (p) => p.slug !== dbProduct.slug && p.id !== dbProduct.id
+    );
+
+    // 1. Get products in the same category and shuffle randomly
+    const sameCategory = otherProducts.filter((p) => p.category === dbProduct.category);
+    const shuffledSameCategory = [...sameCategory].sort(() => Math.random() - 0.5);
+
+    // 2. Get products in other categories and shuffle randomly (fallback/backfill)
+    const otherCategories = otherProducts.filter((p) => p.category !== dbProduct.category);
+    const shuffledOtherCategories = [...otherCategories].sort(() => Math.random() - 0.5);
+
+    // Combine same category first, then backfill if needed to always show 4 products
+    const combined = [...shuffledSameCategory, ...shuffledOtherCategories].slice(0, 4);
+
+    return combined.map(toDisplayProduct);
+  }, [allProducts, dbProduct?.id, dbProduct?.category, slug]);
+
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
@@ -54,12 +77,6 @@ const ProductDetail = () => {
 
   const product = toDisplayProduct(dbProduct);
   const tag = inventoryLabels[product.inventoryTag] || { label: "In Stock", variant: "outline" };
-  const related = allProducts
-    ?.filter((p) => p.category === dbProduct.category && p.slug !== dbProduct.slug && p.id !== dbProduct.id)
-    .slice(0, 4)
-    .map(toDisplayProduct) || [];
-
-  const hasNightImage = Boolean(dbProduct.image_night && dbProduct.image_night !== dbProduct.image_day);
 
   return (
     <div className="py-8 md:py-12">
