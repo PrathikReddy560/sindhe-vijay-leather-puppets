@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, Upload, Shield, Loader2, Package, MessageCircle, Mail, Image, Video, BookOpen, Calendar, Award } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Shield, Loader2, Package, MessageCircle, Mail, Image, Video, BookOpen, Calendar, Award, GraduationCap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/context/AuthContext";
@@ -280,6 +280,23 @@ const Admin = () => {
   const [uploadingEventImg, setUploadingEventImg] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
 
+  // Workshops state
+  const [newWsTitle, setNewWsTitle] = useState("");
+  const [newWsDesc, setNewWsDesc] = useState("");
+  const [newWsLocation, setNewWsLocation] = useState("");
+  const [newWsStartDate, setNewWsStartDate] = useState("");
+  const [newWsEndDate, setNewWsEndDate] = useState("");
+  const [newWsTimings, setNewWsTimings] = useState("");
+  const [newWsImage, setNewWsImage] = useState("");
+  const [newWsVideo, setNewWsVideo] = useState("");
+  const [uploadingWsImg, setUploadingWsImg] = useState(false);
+  const [savingWs, setSavingWs] = useState(false);
+
+  const [editWsOpen, setEditWsOpen] = useState(false);
+  const [editingWs, setEditingWs] = useState<any | null>(null);
+  const [uploadingEditWsImg, setUploadingEditWsImg] = useState(false);
+  const [savingEditWs, setSavingEditWs] = useState(false);
+
   // Achievements state
   const [achievementsList, setAchievementsList] = useState<any[]>([]);
   const [achievementsLoading, setAchievementsLoading] = useState(false);
@@ -488,8 +505,126 @@ const Admin = () => {
       if (error) throw error;
       toast({ title: "Event deleted" });
       fetchEvents();
+      queryClient.invalidateQueries({ queryKey: ["workshops"] });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleUploadWsImg = async (file: File, isEdit: boolean = false) => {
+    const setter = isEdit ? setUploadingEditWsImg : setUploadingWsImg;
+    setter(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `workshops/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("product-images").upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+      if (isEdit) {
+        setEditingWs((prev: any) => (prev ? { ...prev, image_url: publicUrl } : null));
+      } else {
+        setNewWsImage(publicUrl);
+      }
+      toast({ title: "Workshop image uploaded" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setter(false);
+    }
+  };
+
+  const handleAddWorkshop = async () => {
+    if (!newWsTitle.trim() || !newWsStartDate || !newWsLocation.trim()) {
+      toast({
+        title: "Missing fields",
+        description: "Workshop Title, Start Date, and Place/Location are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSavingWs(true);
+    try {
+      const timingsValue = newWsTimings.trim() || "10:00 AM – 1:30 PM";
+      const { error } = await supabase.from("events").insert({
+        title: newWsTitle.trim(),
+        description: newWsDesc.trim(),
+        location: newWsLocation.trim(),
+        start_date: newWsStartDate,
+        end_date: newWsEndDate || newWsStartDate,
+        stall_no: timingsValue,
+        image_url: newWsImage.trim() || null,
+      });
+      if (error) throw error;
+      toast({ title: "Workshop added successfully" });
+      setNewWsTitle("");
+      setNewWsDesc("");
+      setNewWsLocation("");
+      setNewWsStartDate("");
+      setNewWsEndDate("");
+      setNewWsTimings("");
+      setNewWsImage("");
+      setNewWsVideo("");
+      fetchEvents();
+      queryClient.invalidateQueries({ queryKey: ["workshops"] });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+    } catch (err: any) {
+      toast({ title: "Error adding workshop", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingWs(false);
+    }
+  };
+
+  const handleOpenEditWorkshop = (ws: any) => {
+    setEditingWs({
+      id: ws.id,
+      title: ws.title || "",
+      description: ws.description || "",
+      location: ws.location || "",
+      start_date: ws.start_date || "",
+      end_date: ws.end_date || "",
+      stall_no: ws.stall_no || "10:00 AM – 1:30 PM",
+      image_url: ws.image_url || "",
+    });
+    setEditWsOpen(true);
+  };
+
+  const handleSaveEditedWorkshop = async () => {
+    if (!editingWs || !editingWs.title.trim() || !editingWs.start_date || !editingWs.location.trim()) {
+      toast({
+        title: "Missing fields",
+        description: "Title, Start Date, and Place/Location are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSavingEditWs(true);
+    try {
+      const { error } = await supabase
+        .from("events")
+        .update({
+          title: editingWs.title.trim(),
+          description: editingWs.description.trim(),
+          location: editingWs.location.trim(),
+          start_date: editingWs.start_date,
+          end_date: editingWs.end_date || editingWs.start_date,
+          stall_no: editingWs.stall_no.trim() || "10:00 AM – 1:30 PM",
+          image_url: editingWs.image_url?.trim() || null,
+        })
+        .eq("id", editingWs.id);
+
+      if (error) throw error;
+      toast({ title: "Workshop updated successfully" });
+      setEditWsOpen(false);
+      setEditingWs(null);
+      fetchEvents();
+      queryClient.invalidateQueries({ queryKey: ["workshops"] });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+    } catch (err: any) {
+      toast({ title: "Error updating workshop", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingEditWs(false);
     }
   };
 
@@ -901,6 +1036,9 @@ const Admin = () => {
           </TabsTrigger>
           <TabsTrigger value="stories" className="gap-2">
             <BookOpen className="h-4 w-4" /> Stories
+          </TabsTrigger>
+          <TabsTrigger value="workshops_admin" className="gap-2">
+            <GraduationCap className="h-4 w-4" /> Workshops
           </TabsTrigger>
           <TabsTrigger value="events_admin" className="gap-2">
             <Calendar className="h-4 w-4" /> Events
@@ -2111,6 +2249,347 @@ const Admin = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* ========================================================================= */}
+        {/* Workshops Management Tab */}
+        {/* ========================================================================= */}
+        <TabsContent value="workshops_admin">
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="md:col-span-1">
+              <CardHeader>
+                <CardTitle className="font-serif">Add Workshop / Masterclass</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="wsTitle">Workshop Title *</Label>
+                  <Input
+                    id="wsTitle"
+                    placeholder="e.g. Masterclass in Traditional Leather Shadow Puppetry"
+                    value={newWsTitle}
+                    onChange={(e) => setNewWsTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wsDesc">Description & Curriculum</Label>
+                  <Textarea
+                    id="wsDesc"
+                    rows={3}
+                    placeholder="Describe what participants will learn, materials provided, and take-home puppets..."
+                    value={newWsDesc}
+                    onChange={(e) => setNewWsDesc(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wsLocation">Place / Venue / City *</Label>
+                  <Input
+                    id="wsLocation"
+                    placeholder="e.g. Chitrakala Parishath, Bangalore"
+                    value={newWsLocation}
+                    onChange={(e) => setNewWsLocation(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="wsStart">Start Date *</Label>
+                    <Input
+                      id="wsStart"
+                      type="date"
+                      value={newWsStartDate}
+                      onChange={(e) => setNewWsStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="wsEnd">End Date</Label>
+                    <Input
+                      id="wsEnd"
+                      type="date"
+                      value={newWsEndDate}
+                      onChange={(e) => setNewWsEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wsTimings">Timings (e.g. 10:30 AM – 2:00 PM)</Label>
+                  <Input
+                    id="wsTimings"
+                    placeholder="e.g. 10:30 AM – 2:00 PM"
+                    value={newWsTimings}
+                    onChange={(e) => setNewWsTimings(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Workshop Banner / Photo</Label>
+                  {newWsImage && (
+                    <img
+                      src={newWsImage}
+                      alt="Preview"
+                      className="h-28 w-full rounded-md border object-cover bg-muted"
+                    />
+                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Image URL"
+                      value={newWsImage}
+                      onChange={(e) => setNewWsImage(e.target.value)}
+                      className="flex-1"
+                    />
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && handleUploadWsImg(e.target.files[0], false)}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        disabled={uploadingWsImg}
+                        asChild
+                      >
+                        <span>
+                          {uploadingWsImg ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                        </span>
+                      </Button>
+                    </label>
+                  </div>
+                </div>
+                <Button
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                  onClick={handleAddWorkshop}
+                  disabled={savingWs}
+                >
+                  {savingWs && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Publish Workshop
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="font-serif">Current Workshops</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {eventsLoading ? (
+                  <div className="flex justify-center py-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {eventsList.map((ws) => (
+                      <Card key={ws.id} className="overflow-hidden flex flex-col justify-between">
+                        <div>
+                          {ws.image_url && (
+                            <div className="h-36 bg-muted overflow-hidden">
+                              <img
+                                src={ws.image_url}
+                                alt={ws.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="p-4 space-y-2">
+                            <h4 className="font-serif text-base font-bold line-clamp-2">{ws.title}</h4>
+                            <div className="text-xs space-y-1 text-muted-foreground">
+                              <p className="font-medium text-foreground">
+                                📅 {ws.start_date} {ws.end_date && ws.end_date !== ws.start_date ? `– ${ws.end_date}` : ""}
+                              </p>
+                              <p>⏰ {ws.stall_no || "10:00 AM – 1:30 PM"}</p>
+                              <p>📍 {ws.location}</p>
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-2">
+                              {ws.description}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="p-3 border-t flex justify-end gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-amber-500 hover:text-amber-700 hover:bg-amber-500/10"
+                            onClick={() => handleOpenEditWorkshop(ws)}
+                            title="Edit Workshop"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteEvent(ws.id)}
+                            title="Delete Workshop"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                    {eventsList.length === 0 && (
+                      <div className="col-span-full py-10 text-center text-muted-foreground border border-dashed rounded-lg">
+                        No workshops published yet.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Edit Workshop Dialog */}
+          <Dialog open={editWsOpen} onOpenChange={setEditWsOpen}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="font-serif">Edit Workshop</DialogTitle>
+              </DialogHeader>
+              {editingWs && (
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="editWsTitle">Title *</Label>
+                    <Input
+                      id="editWsTitle"
+                      value={editingWs.title}
+                      onChange={(e) =>
+                        setEditingWs((prev: any) =>
+                          prev ? { ...prev, title: e.target.value } : null
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editWsDesc">Description</Label>
+                    <Textarea
+                      id="editWsDesc"
+                      rows={3}
+                      value={editingWs.description}
+                      onChange={(e) =>
+                        setEditingWs((prev: any) =>
+                          prev ? { ...prev, description: e.target.value } : null
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editWsLoc">Place / Location *</Label>
+                    <Input
+                      id="editWsLoc"
+                      value={editingWs.location}
+                      onChange={(e) =>
+                        setEditingWs((prev: any) =>
+                          prev ? { ...prev, location: e.target.value } : null
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="editWsStart">Start Date *</Label>
+                      <Input
+                        id="editWsStart"
+                        type="date"
+                        value={editingWs.start_date}
+                        onChange={(e) =>
+                          setEditingWs((prev: any) =>
+                            prev ? { ...prev, start_date: e.target.value } : null
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editWsEnd">End Date</Label>
+                      <Input
+                        id="editWsEnd"
+                        type="date"
+                        value={editingWs.end_date}
+                        onChange={(e) =>
+                          setEditingWs((prev: any) =>
+                            prev ? { ...prev, end_date: e.target.value } : null
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editWsTimings">Timings</Label>
+                    <Input
+                      id="editWsTimings"
+                      value={editingWs.stall_no}
+                      onChange={(e) =>
+                        setEditingWs((prev: any) =>
+                          prev ? { ...prev, stall_no: e.target.value } : null
+                        )
+                      }
+                      placeholder="e.g. 10:30 AM – 2:00 PM"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Workshop Image</Label>
+                    {editingWs.image_url && (
+                      <img
+                        src={editingWs.image_url}
+                        alt="Preview"
+                        className="h-24 w-full rounded-md border object-cover bg-muted"
+                      />
+                    )}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Image URL"
+                        value={editingWs.image_url}
+                        onChange={(e) =>
+                          setEditingWs((prev: any) =>
+                            prev ? { ...prev, image_url: e.target.value } : null
+                          )
+                        }
+                        className="flex-1"
+                      />
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) =>
+                            e.target.files?.[0] && handleUploadWsImg(e.target.files[0], true)
+                          }
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          disabled={uploadingEditWsImg}
+                          asChild
+                        >
+                          <span>
+                            {uploadingEditWsImg ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Upload className="h-4 w-4" />
+                            )}
+                          </span>
+                        </Button>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditWsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                  onClick={handleSaveEditedWorkshop}
+                  disabled={savingEditWs}
+                >
+                  {savingEditWs && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>

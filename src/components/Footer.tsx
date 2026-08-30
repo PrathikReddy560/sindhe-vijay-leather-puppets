@@ -17,6 +17,8 @@ const Footer = () => (
             {[
               { to: "/shop", label: "Shop All" },
               { to: "/heritage", label: "Our Heritage" },
+              { to: "/workshops", label: "Workshops" },
+              { to: "/events", label: "Live Events" },
               { to: "/contact", label: "Custom Orders" },
             ].map((l) => (
               <Link key={l.to} to={l.to} className="text-sm text-stone-400 underline underline-offset-4 transition-colors hover:text-amber-500">
