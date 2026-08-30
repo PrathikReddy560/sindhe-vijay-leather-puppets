@@ -644,7 +644,17 @@ const Admin = () => {
     workshopStorage.deleteWorkshop(id);
     queryClient.invalidateQueries({ queryKey: ["workshops_v2"] });
     queryClient.invalidateQueries({ queryKey: ["workshops"] });
+    queryClient.invalidateQueries({ queryKey: ["workshop"] });
     toast({ title: "Workshop deleted" });
+  };
+
+  const handleDeleteAllWorkshops = () => {
+    if (!window.confirm("Are you sure you want to delete ALL workshops? This action cannot be undone.")) return;
+    workshopStorage.deleteAllWorkshops();
+    queryClient.invalidateQueries({ queryKey: ["workshops_v2"] });
+    queryClient.invalidateQueries({ queryKey: ["workshops"] });
+    queryClient.invalidateQueries({ queryKey: ["workshop"] });
+    toast({ title: "All workshops deleted successfully" });
   };
 
   const handleToggleWorkshopStatus = (ws: WorkshopItem, newStatus: WorkshopItem["status"]) => {
@@ -2562,9 +2572,21 @@ const Admin = () => {
               </div>
 
               {wsSubTab === "workshops" && (
-                <Button onClick={handleOpenNewWorkshop} className="gap-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold">
-                  <Plus className="h-4 w-4" /> Add Workshop
-                </Button>
+                <div className="flex items-center gap-2">
+                  {adminWorkshops && adminWorkshops.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDeleteAllWorkshops}
+                      className="gap-1.5 text-xs text-destructive hover:bg-destructive/10 border-destructive/30"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete All Workshops
+                    </Button>
+                  )}
+                  <Button onClick={handleOpenNewWorkshop} className="gap-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold">
+                    <Plus className="h-4 w-4" /> Add Workshop
+                  </Button>
+                </div>
               )}
             </div>
 

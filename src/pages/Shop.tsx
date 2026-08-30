@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, SlidersHorizontal, X, Search, Check, Sparkles, Tag, ArrowUpDown } from "lucide-react";
+import { Loader2, SlidersHorizontal, X, Search, Check, Tag, ArrowUpDown, Ruler } from "lucide-react";
 import { useProducts, toDisplayProduct, DisplayProduct } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
 import { categories, ProductCategory } from "@/data/products";
@@ -11,6 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+
+// Required exact size filters: 5", 8", 12", 16", 25" + Custom
+const EXACT_SIZE_PRESETS = [
+  { value: "all", label: "All Sizes" },
+  { value: '5"', label: '5"' },
+  { value: '8"', label: '8"' },
+  { value: '12"', label: '12"' },
+  { value: '16"', label: '16"' },
+  { value: '25"', label: '25"' },
+];
 
 const sortOptions = [
   { value: "default", label: "Featured & Default" },
@@ -27,75 +37,43 @@ const inventoryFilters = [
   { value: "limited-edition", label: "Limited Edition" },
 ];
 
-// Helper to extract numbers from dimensions/text
-const extractDimensionNumbers = (text: string): number[] => {
-  if (!text) return [];
-  const matches = text.match(/\b\d+(\.\d+)?\b/g);
-  return matches ? matches.map((n) => parseFloat(n)).filter((n) => !isNaN(n)) : [];
-};
-
-// Ultra-robust size matcher for 8", 12", 5", 16", 25", 30x14, etc.
-const matchesSizeFilter = (product: DisplayProduct, sizeFilter: string): boolean => {
+// Strict size matcher: ONLY matches products with matching size in dimensions
+const matchesExactSize = (product: DisplayProduct, sizeFilter: string): boolean => {
   if (!sizeFilter || sizeFilter === "all") return true;
 
   const rawQuery = sizeFilter.trim().toLowerCase();
   if (!rawQuery) return true;
 
-  // Predefined Range Buckets
-  if (rawQuery === "small" || rawQuery === "<10") {
-    const dimNums = extractDimensionNumbers(product.dimensions || "");
-    return dimNums.some((n) => n > 0 && n < 10);
-  }
-  if (rawQuery === "medium" || rawQuery === "10-20") {
-    const dimNums = extractDimensionNumbers(product.dimensions || "");
-    return dimNums.some((n) => n >= 10 && n <= 20);
-  }
-  if (rawQuery === "large" || rawQuery === ">20") {
-    const dimNums = extractDimensionNumbers(product.dimensions || "");
-    return dimNums.some((n) => n > 20);
-  }
-
-  // Normalize quotes and units
+  // Clean the filter query: strip quotes and unit words
   const cleanQuery = rawQuery
-    .replace(/["”″″′']/g, "")
+    .replace(/["”″′']/g, "")
     .replace(/\s*(inch|inches|in|in\.|cm|diameter|dia)\b/g, "")
     .trim();
 
-  const combinedText = [
-    product.dimensions || "",
-    product.name || "",
-    product.description || "",
-    product.longDescription || "",
-  ].join(" ").toLowerCase();
+  if (!cleanQuery) return true;
 
-  const normalizedText = combinedText.replace(/["”″″′']/g, "");
+  // Check product dimension string (e.g. '8" × 5"', '12" diameter', '25" × 18"')
+  const rawDim = (product.dimensions || "").toLowerCase();
+  if (!rawDim) return false;
 
-  // 1. Direct text match on dimensions or product info
-  if (normalizedText.includes(cleanQuery)) {
-    return true;
-  }
+  // Extract all distinct numeric values from the product's dimension string
+  const dimNumbers = rawDim.match(/\b\d+(\.\d+)?\b/g)?.map(Number) || [];
 
-  // 2. Numerical size check with boundary matching (e.g. 8 should match '8" × 5"', '8 inch', '8" diameter', but NOT '18' or '28')
+  // 1. If filter is a single number (e.g. "5", "8", "12", "16", "25")
   const queryNum = parseFloat(cleanQuery);
-  if (!isNaN(queryNum) && queryNum > 0) {
-    const numRegex = new RegExp(`(^|[^0-9.])${queryNum}([^0-9.]|$)`, "i");
-    if (numRegex.test(normalizedText)) {
-      return true;
-    }
+  if (!isNaN(queryNum) && !cleanQuery.includes("x") && !cleanQuery.includes("×") && !cleanQuery.includes("*")) {
+    return dimNumbers.some((n) => Math.abs(n - queryNum) < 0.1);
   }
 
-  // 3. Multi-dimensional format check (e.g. '30 x 14' or '30x14')
-  const queryParts = cleanQuery
-    .split(/[\s×*x,by]+/)
-    .map((p) => parseFloat(p))
-    .filter((n) => !isNaN(n) && n > 0);
-
+  // 2. If filter is multi-dimensional e.g. "30 x 14" or "30x14"
+  const queryParts = cleanQuery.split(/[\s×*x,by]+/).map(Number).filter((n) => !isNaN(n) && n > 0);
   if (queryParts.length >= 2) {
-    const prodNums = extractDimensionNumbers(normalizedText);
-    return queryParts.every((qn) => prodNums.some((pn) => Math.abs(pn - qn) < 0.5));
+    return queryParts.every((qn) => dimNumbers.some((dn) => Math.abs(dn - qn) < 0.5));
   }
 
-  return false;
+  // 3. Exact substring match in dimensions
+  const normalizedDim = rawDim.replace(/["”″′']/g, "");
+  return normalizedDim.includes(cleanQuery);
 };
 
 const Shop = () => {
@@ -106,6 +84,7 @@ const Shop = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000]);
   const [sizeFilter, setSizeFilter] = useState("all");
+  const [customSizeInput, setCustomSizeInput] = useState("");
   const [inventoryFilter, setInventoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState("default");
   const [showFilters, setShowFilters] = useState(false);
@@ -116,32 +95,15 @@ const Shop = () => {
     return dbProducts.map(toDisplayProduct);
   }, [dbProducts]);
 
-  // Dynamically extract all available unique size options from active catalog
-  const dynamicSizeOptions = useMemo(() => {
-    const sizeCounts: Record<string, number> = {};
-    const commonPresets = ['5"', '8"', '12"', '14"', '16"', '17"', '23"', '25"', '26"', '30"', '34"', '35"'];
-
-    allDisplayProducts.forEach((p) => {
-      commonPresets.forEach((size) => {
-        if (matchesSizeFilter(p, size)) {
-          sizeCounts[size] = (sizeCounts[size] || 0) + 1;
-        }
-      });
+  // Compute exact product counts for each prescribed size preset (5", 8", 12", 16", 25")
+  const sizePresetsWithCounts = useMemo(() => {
+    return EXACT_SIZE_PRESETS.map((preset) => {
+      if (preset.value === "all") {
+        return { ...preset, count: allDisplayProducts.length };
+      }
+      const matchingCount = allDisplayProducts.filter((p) => matchesExactSize(p, preset.value)).length;
+      return { ...preset, count: matchingCount };
     });
-
-    // Return sizes that have at least 1 matching product, ordered by size number
-    const availablePresets = commonPresets
-      .filter((size) => (sizeCounts[size] || 0) > 0)
-      .sort((a, b) => parseFloat(a) - parseFloat(b));
-
-    return [
-      { value: "all", label: "All Sizes", count: allDisplayProducts.length },
-      ...availablePresets.map((s) => ({
-        value: s,
-        label: s,
-        count: sizeCounts[s] || 0,
-      })),
-    ];
   }, [allDisplayProducts]);
 
   const maxPrice = useMemo(() => {
@@ -149,11 +111,12 @@ const Shop = () => {
     return Math.max(...allDisplayProducts.map((p) => p.price), 50000);
   }, [allDisplayProducts]);
 
+  // Strict Filtering logic
   const filtered = useMemo(() => {
     if (!allDisplayProducts.length) return [];
     let display = [...allDisplayProducts];
 
-    // 1. Search Query filter
+    // 1. Keyword search query
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       display = display.filter(
@@ -175,12 +138,12 @@ const Shop = () => {
     // 3. Price filter
     display = display.filter((p) => p.price >= priceRange[0] && p.price <= priceRange[1]);
 
-    // 4. Size filter (smart boundary and dimension matching)
+    // 4. Exact Size Filter (Strictly matches dimensions only)
     if (sizeFilter !== "all" && sizeFilter.trim() !== "") {
-      display = display.filter((p) => matchesSizeFilter(p, sizeFilter));
+      display = display.filter((p) => matchesExactSize(p, sizeFilter));
     }
 
-    // 5. Inventory tag filter
+    // 5. Inventory status filter
     if (inventoryFilter !== "all") {
       display = display.filter((p) => p.inventoryTag === inventoryFilter);
     }
@@ -191,7 +154,6 @@ const Shop = () => {
     else if (sortBy === "name-asc") display.sort((a, b) => a.name.localeCompare(b.name));
     else if (sortBy === "name-desc") display.sort((a, b) => b.name.localeCompare(a.name));
     else if (sortBy === "default") {
-      // Featured first, then in-stock
       display.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
     }
 
@@ -202,6 +164,20 @@ const Shop = () => {
     setActiveCategory(cat);
     if (cat === "all") setSearchParams({});
     else setSearchParams({ category: cat });
+  };
+
+  const handleSelectSizePreset = (val: string) => {
+    setSizeFilter(val);
+    setCustomSizeInput("");
+  };
+
+  const handleCustomSizeChange = (val: string) => {
+    setCustomSizeInput(val);
+    if (val.trim() === "") {
+      setSizeFilter("all");
+    } else {
+      setSizeFilter(val);
+    }
   };
 
   const formatPrice = (p: number) =>
@@ -219,6 +195,7 @@ const Shop = () => {
     setSearchQuery("");
     setPriceRange([0, maxPrice]);
     setSizeFilter("all");
+    setCustomSizeInput("");
     setInventoryFilter("all");
     setSortBy("default");
   };
@@ -352,7 +329,13 @@ const Shop = () => {
             {sizeFilter !== "all" && (
               <Badge variant="default" className="gap-1 text-xs font-semibold bg-amber-500 text-black hover:bg-amber-600">
                 Size: {sizeFilter}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setSizeFilter("all")} />
+                <X
+                  className="h-3 w-3 cursor-pointer"
+                  onClick={() => {
+                    setSizeFilter("all");
+                    setCustomSizeInput("");
+                  }}
+                />
               </Badge>
             )}
             {inventoryFilter !== "all" && (
@@ -380,16 +363,19 @@ const Shop = () => {
               className="mt-4 overflow-hidden rounded-xl border bg-card p-5 shadow-sm space-y-6"
             >
               <div className="grid gap-6 md:grid-cols-3">
-                {/* 1. Size Filter with Real Product Counts & Smart Matching */}
+                {/* 1. Exact Size Filters: 5", 8", 12", 16", 25" + Custom Inches */}
                 <div className="space-y-3 md:col-span-2">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                      <Sparkles className="h-4 w-4 text-amber-500" /> Filter by Product Size (Inches / Diameter)
+                      <Ruler className="h-4 w-4 text-amber-500" /> Filter by Size (Inches)
                     </label>
                     {sizeFilter !== "all" && (
                       <button
                         type="button"
-                        onClick={() => setSizeFilter("all")}
+                        onClick={() => {
+                          setSizeFilter("all");
+                          setCustomSizeInput("");
+                        }}
                         className="text-xs text-primary hover:underline"
                       >
                         Reset Size
@@ -397,18 +383,18 @@ const Shop = () => {
                     )}
                   </div>
 
-                  {/* Size Preset Buttons */}
-                  <div className="flex flex-wrap gap-2">
-                    {dynamicSizeOptions.map((s) => {
-                      const isActive = sizeFilter === s.value;
+                  {/* Prescribed Exact Size Buttons: 5", 8", 12", 16", 25" */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {sizePresetsWithCounts.map((s) => {
+                      const isActive = sizeFilter === s.value && !customSizeInput;
                       return (
                         <Button
                           key={s.value}
                           type="button"
                           variant={isActive ? "default" : "outline"}
                           size="sm"
-                          onClick={() => setSizeFilter(s.value)}
-                          className={`h-8 text-xs gap-1.5 ${
+                          onClick={() => handleSelectSizePreset(s.value)}
+                          className={`h-9 text-xs font-medium gap-1.5 px-3.5 ${
                             isActive
                               ? "bg-amber-500 hover:bg-amber-600 text-black font-bold shadow-sm"
                               : "hover:border-primary/50"
@@ -417,7 +403,11 @@ const Shop = () => {
                           {isActive && <Check className="h-3 w-3" />}
                           <span>{s.label}</span>
                           {s.value !== "all" && (
-                            <span className={`text-[10px] px-1 rounded-full ${isActive ? "bg-black/20 text-black" : "bg-muted text-muted-foreground"}`}>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                                isActive ? "bg-black/20 text-black" : "bg-muted text-muted-foreground"
+                              }`}
+                            >
                               {s.count}
                             </span>
                           )}
@@ -426,46 +416,28 @@ const Shop = () => {
                     })}
                   </div>
 
-                  {/* Size Ranges & Custom Input */}
-                  <div className="pt-2 flex flex-wrap items-center gap-3 text-xs">
-                    <span className="text-muted-foreground font-medium">Quick Ranges:</span>
-                    <Button
-                      type="button"
-                      variant={sizeFilter === "<10" ? "secondary" : "ghost"}
-                      size="sm"
-                      className="h-7 text-xs px-2"
-                      onClick={() => setSizeFilter("<10")}
-                    >
-                      Mini / Small (&lt; 10&quot;)
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={sizeFilter === "10-20" ? "secondary" : "ghost"}
-                      size="sm"
-                      className="h-7 text-xs px-2"
-                      onClick={() => setSizeFilter("10-20")}
-                    >
-                      Medium (10&quot; – 20&quot;)
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={sizeFilter === ">20" ? "secondary" : "ghost"}
-                      size="sm"
-                      className="h-7 text-xs px-2"
-                      onClick={() => setSizeFilter(">20")}
-                    >
-                      Large / Masterpiece (&gt; 20&quot;)
-                    </Button>
-
-                    <div className="flex items-center gap-1.5 ml-auto">
-                      <span className="text-muted-foreground whitespace-nowrap">Custom Size:</span>
-                      <Input
-                        placeholder="e.g. 8, 12, 30x14"
-                        value={dynamicSizeOptions.some((s) => s.value === sizeFilter) || ["<10", "10-20", ">20"].includes(sizeFilter) ? "" : sizeFilter}
-                        onChange={(e) => setSizeFilter(e.target.value || "all")}
-                        className="h-7 w-28 text-xs"
-                      />
-                    </div>
+                  {/* Custom Inches Input */}
+                  <div className="pt-2 flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
+                      Or Custom Inches:
+                    </span>
+                    <Input
+                      placeholder="e.g. 8, 12, 14, 30..."
+                      value={customSizeInput}
+                      onChange={(e) => handleCustomSizeChange(e.target.value)}
+                      className="h-8 max-w-[200px] text-xs"
+                    />
+                    {customSizeInput && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs text-muted-foreground"
+                        onClick={() => handleSelectSizePreset("all")}
+                      >
+                        Clear
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -492,7 +464,7 @@ const Shop = () => {
                 </div>
               </div>
 
-              {/* 3. Inventory Status Filter */}
+              {/* 3. Availability Filter */}
               <div className="pt-3 border-t flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold text-foreground flex items-center gap-1">
                   <Tag className="h-3.5 w-3.5 text-primary" /> Availability:
@@ -539,16 +511,18 @@ const Shop = () => {
           </motion.div>
         )}
 
-        {/* Empty State */}
+        {/* Empty State when no products match size/filters */}
         {!isLoading && filtered.length === 0 && (
           <div className="mt-16 flex flex-col items-center justify-center p-8 text-center bg-card rounded-xl border border-dashed">
             <SlidersHorizontal className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <h3 className="font-serif text-lg font-bold text-foreground">No matching products found</h3>
+            <h3 className="font-serif text-lg font-bold text-foreground">
+              No products found matching size &ldquo;{sizeFilter}&rdquo;
+            </h3>
             <p className="mt-1 text-sm text-muted-foreground max-w-md">
-              We couldn&apos;t find any items matching your selected size or filter criteria. Try adjusting the size or price range.
+              There are currently no products in our catalog with dimensions matching this size. Please select another size preset or clear your filters.
             </p>
             <Button onClick={clearFilters} className="mt-4 bg-amber-500 hover:bg-amber-600 text-black font-semibold" size="sm">
-              Clear All Filters
+              View All Products
             </Button>
           </div>
         )}

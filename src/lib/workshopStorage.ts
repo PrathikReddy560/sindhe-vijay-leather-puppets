@@ -298,11 +298,16 @@ export const workshopStorage = {
   getWorkshops: (): WorkshopItem[] => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.WORKSHOPS);
-      let workshops: WorkshopItem[] = stored ? JSON.parse(stored) : DEFAULT_WORKSHOPS;
-      if (!workshops || workshops.length === 0) {
+      let workshops: WorkshopItem[];
+      if (stored === null) {
+        // Initialize with default mock workshops on very first visit only
         workshops = DEFAULT_WORKSHOPS;
         localStorage.setItem(STORAGE_KEYS.WORKSHOPS, JSON.stringify(DEFAULT_WORKSHOPS));
+      } else {
+        workshops = JSON.parse(stored);
       }
+
+      if (!Array.isArray(workshops)) return [];
 
       // Calculate real-time booked & available seats
       const registrations = workshopStorage.getRegistrations();
@@ -321,7 +326,7 @@ export const workshopStorage = {
         };
       });
     } catch {
-      return DEFAULT_WORKSHOPS;
+      return [];
     }
   },
 
@@ -411,12 +416,24 @@ export const workshopStorage = {
   },
 
   deleteWorkshop: (id: string) => {
-    const all = workshopStorage.getWorkshops().filter((w) => w.id !== id);
-    localStorage.setItem(STORAGE_KEYS.WORKSHOPS, JSON.stringify(all));
-
     try {
+      const stored = localStorage.getItem(STORAGE_KEYS.WORKSHOPS);
+      const all: WorkshopItem[] = stored ? JSON.parse(stored) : [];
+      const filtered = all.filter((w) => w.id !== id);
+      localStorage.setItem(STORAGE_KEYS.WORKSHOPS, JSON.stringify(filtered));
+
       supabase.from("events").delete().eq("id", id).then();
-    } catch {}
+    } catch (e) {
+      console.error("Error deleting workshop:", e);
+    }
+  },
+
+  deleteAllWorkshops: () => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.WORKSHOPS, JSON.stringify([]));
+    } catch (e) {
+      console.error("Error deleting all workshops:", e);
+    }
   },
 
   // -------------------------------------------------------------
