@@ -16,6 +16,7 @@ const Footer = () => (
           <nav className="mt-3 flex flex-col gap-2">
             {[
               { to: "/shop", label: "Shop All" },
+              { to: "/style-my-space", label: "Style My Space (AI Studio)" },
               { to: "/heritage", label: "Our Heritage" },
               { to: "/workshops", label: "Workshops" },
               { to: "/events", label: "Live Events" },

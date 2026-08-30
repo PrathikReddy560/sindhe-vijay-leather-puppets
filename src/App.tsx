@@ -18,6 +18,7 @@ import Events from "./pages/Events";
 import Workshops from "./pages/Workshops";
 import WorkshopDetail from "./pages/WorkshopDetail";
 import Achievements from "./pages/Achievements";
+import StyleMySpace from "./pages/StyleMySpace";
 import Contact from "./pages/Contact";
 import Checkout from "./pages/Checkout";
 import ThankYou from "./pages/ThankYou";
@@ -53,6 +54,7 @@ const App = () => (
                 <Route path="/workshop/:slug" element={<WorkshopDetail />} />
                 <Route path="/events" element={<Events />} />
                 <Route path="/achievements" element={<Achievements />} />
+                <Route path="/style-my-space" element={<StyleMySpace />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/thank-you" element={<ThankYou />} />
