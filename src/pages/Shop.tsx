@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Loader2, SlidersHorizontal, X } from "lucide-react";
-import { useProducts, toDisplayProduct } from "@/hooks/useProducts";
+import { motion, AnimatePresence } from "framer-motion";
+import { Loader2, SlidersHorizontal, X, Search, Check, Sparkles, Tag, ArrowUpDown } from "lucide-react";
+import { useProducts, toDisplayProduct, DisplayProduct } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
 import { categories, ProductCategory } from "@/data/products";
 import ProductCard from "@/components/ProductCard";
@@ -12,62 +12,191 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
-const sizeFilters = [
-  { value: "all", label: "All Sizes" },
-  { value: '5"', label: '5"' },
-  { value: '8"', label: '8"' },
-  { value: '12"', label: '12"' },
-  { value: '16"', label: '16"' },
-  { value: '25"', label: '25"' },
-];
-
 const sortOptions = [
-  { value: "default", label: "Default" },
+  { value: "default", label: "Featured & Default" },
   { value: "price-asc", label: "Price: Low → High" },
   { value: "price-desc", label: "Price: High → Low" },
   { value: "name-asc", label: "Name: A → Z" },
+  { value: "name-desc", label: "Name: Z → A" },
 ];
+
+const inventoryFilters = [
+  { value: "all", label: "All Items" },
+  { value: "in-stock", label: "In Stock" },
+  { value: "made-to-order", label: "Made to Order" },
+  { value: "limited-edition", label: "Limited Edition" },
+];
+
+// Helper to extract numbers from dimensions/text
+const extractDimensionNumbers = (text: string): number[] => {
+  if (!text) return [];
+  const matches = text.match(/\b\d+(\.\d+)?\b/g);
+  return matches ? matches.map((n) => parseFloat(n)).filter((n) => !isNaN(n)) : [];
+};
+
+// Ultra-robust size matcher for 8", 12", 5", 16", 25", 30x14, etc.
+const matchesSizeFilter = (product: DisplayProduct, sizeFilter: string): boolean => {
+  if (!sizeFilter || sizeFilter === "all") return true;
+
+  const rawQuery = sizeFilter.trim().toLowerCase();
+  if (!rawQuery) return true;
+
+  // Predefined Range Buckets
+  if (rawQuery === "small" || rawQuery === "<10") {
+    const dimNums = extractDimensionNumbers(product.dimensions || "");
+    return dimNums.some((n) => n > 0 && n < 10);
+  }
+  if (rawQuery === "medium" || rawQuery === "10-20") {
+    const dimNums = extractDimensionNumbers(product.dimensions || "");
+    return dimNums.some((n) => n >= 10 && n <= 20);
+  }
+  if (rawQuery === "large" || rawQuery === ">20") {
+    const dimNums = extractDimensionNumbers(product.dimensions || "");
+    return dimNums.some((n) => n > 20);
+  }
+
+  // Normalize quotes and units
+  const cleanQuery = rawQuery
+    .replace(/["”″″′']/g, "")
+    .replace(/\s*(inch|inches|in|in\.|cm|diameter|dia)\b/g, "")
+    .trim();
+
+  const combinedText = [
+    product.dimensions || "",
+    product.name || "",
+    product.description || "",
+    product.longDescription || "",
+  ].join(" ").toLowerCase();
+
+  const normalizedText = combinedText.replace(/["”″″′']/g, "");
+
+  // 1. Direct text match on dimensions or product info
+  if (normalizedText.includes(cleanQuery)) {
+    return true;
+  }
+
+  // 2. Numerical size check with boundary matching (e.g. 8 should match '8" × 5"', '8 inch', '8" diameter', but NOT '18' or '28')
+  const queryNum = parseFloat(cleanQuery);
+  if (!isNaN(queryNum) && queryNum > 0) {
+    const numRegex = new RegExp(`(^|[^0-9.])${queryNum}([^0-9.]|$)`, "i");
+    if (numRegex.test(normalizedText)) {
+      return true;
+    }
+  }
+
+  // 3. Multi-dimensional format check (e.g. '30 x 14' or '30x14')
+  const queryParts = cleanQuery
+    .split(/[\s×*x,by]+/)
+    .map((p) => parseFloat(p))
+    .filter((n) => !isNaN(n) && n > 0);
+
+  if (queryParts.length >= 2) {
+    const prodNums = extractDimensionNumbers(normalizedText);
+    return queryParts.every((qn) => prodNums.some((pn) => Math.abs(pn - qn) < 0.5));
+  }
+
+  return false;
+};
 
 const Shop = () => {
   const { data: dbCategories } = useCategories();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = searchParams.get("category") as ProductCategory | null;
   const [activeCategory, setActiveCategory] = useState<ProductCategory | "all">(initialCategory || "all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000]);
   const [sizeFilter, setSizeFilter] = useState("all");
+  const [inventoryFilter, setInventoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState("default");
   const [showFilters, setShowFilters] = useState(false);
   const { data: dbProducts, isLoading } = useProducts();
 
-  const maxPrice = useMemo(() => {
-    if (!dbProducts) return 50000;
-    return Math.max(...dbProducts.map((p) => p.price), 50000);
+  const allDisplayProducts = useMemo(() => {
+    if (!dbProducts) return [];
+    return dbProducts.map(toDisplayProduct);
   }, [dbProducts]);
 
-  const filtered = useMemo(() => {
-    if (!dbProducts) return [];
-    let display = dbProducts.map(toDisplayProduct);
+  // Dynamically extract all available unique size options from active catalog
+  const dynamicSizeOptions = useMemo(() => {
+    const sizeCounts: Record<string, number> = {};
+    const commonPresets = ['5"', '8"', '12"', '14"', '16"', '17"', '23"', '25"', '26"', '30"', '34"', '35"'];
 
-    // Category filter
+    allDisplayProducts.forEach((p) => {
+      commonPresets.forEach((size) => {
+        if (matchesSizeFilter(p, size)) {
+          sizeCounts[size] = (sizeCounts[size] || 0) + 1;
+        }
+      });
+    });
+
+    // Return sizes that have at least 1 matching product, ordered by size number
+    const availablePresets = commonPresets
+      .filter((size) => (sizeCounts[size] || 0) > 0)
+      .sort((a, b) => parseFloat(a) - parseFloat(b));
+
+    return [
+      { value: "all", label: "All Sizes", count: allDisplayProducts.length },
+      ...availablePresets.map((s) => ({
+        value: s,
+        label: s,
+        count: sizeCounts[s] || 0,
+      })),
+    ];
+  }, [allDisplayProducts]);
+
+  const maxPrice = useMemo(() => {
+    if (!allDisplayProducts.length) return 50000;
+    return Math.max(...allDisplayProducts.map((p) => p.price), 50000);
+  }, [allDisplayProducts]);
+
+  const filtered = useMemo(() => {
+    if (!allDisplayProducts.length) return [];
+    let display = [...allDisplayProducts];
+
+    // 1. Search Query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      display = display.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          (p.longDescription && p.longDescription.toLowerCase().includes(q)) ||
+          p.category.toLowerCase().includes(q) ||
+          (p.material && p.material.toLowerCase().includes(q)) ||
+          (p.dimensions && p.dimensions.toLowerCase().includes(q))
+      );
+    }
+
+    // 2. Category filter
     if (activeCategory !== "all") {
       display = display.filter((p) => p.category === activeCategory);
     }
 
-    // Price filter
+    // 3. Price filter
     display = display.filter((p) => p.price >= priceRange[0] && p.price <= priceRange[1]);
 
-    // Size filter (matches dimension string)
+    // 4. Size filter (smart boundary and dimension matching)
     if (sizeFilter !== "all" && sizeFilter.trim() !== "") {
-      display = display.filter((p) => p.dimensions?.toLowerCase().includes(sizeFilter.toLowerCase()));
+      display = display.filter((p) => matchesSizeFilter(p, sizeFilter));
     }
 
-    // Sort
-    if (sortBy === "price-asc") display.sort((a, b) => a.price - b.price);
-    else if (sortBy === "price-desc") display.sort((a, b) => b.price - a.price);
+    // 5. Inventory tag filter
+    if (inventoryFilter !== "all") {
+      display = display.filter((p) => p.inventoryTag === inventoryFilter);
+    }
+
+    // 6. Sort
+    if (sortBy === "price-asc") display.sort((a, b) => (a.discountPrice || a.price) - (b.discountPrice || b.price));
+    else if (sortBy === "price-desc") display.sort((a, b) => (b.discountPrice || b.price) - (a.discountPrice || a.price));
     else if (sortBy === "name-asc") display.sort((a, b) => a.name.localeCompare(b.name));
+    else if (sortBy === "name-desc") display.sort((a, b) => b.name.localeCompare(a.name));
+    else if (sortBy === "default") {
+      // Featured first, then in-stock
+      display.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+    }
 
     return display;
-  }, [activeCategory, dbProducts, priceRange, sizeFilter, sortBy]);
+  }, [allDisplayProducts, activeCategory, searchQuery, priceRange, sizeFilter, inventoryFilter, sortBy]);
 
   const handleCategoryChange = (cat: ProductCategory | "all") => {
     setActiveCategory(cat);
@@ -78,40 +207,74 @@ const Shop = () => {
   const formatPrice = (p: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(p);
 
-  const hasActiveFilters = priceRange[0] > 0 || priceRange[1] < maxPrice || sizeFilter !== "all" || sortBy !== "default";
+  const hasActiveFilters =
+    searchQuery.trim() !== "" ||
+    priceRange[0] > 0 ||
+    priceRange[1] < maxPrice ||
+    sizeFilter !== "all" ||
+    inventoryFilter !== "all" ||
+    sortBy !== "default";
 
   const clearFilters = () => {
+    setSearchQuery("");
     setPriceRange([0, maxPrice]);
     setSizeFilter("all");
+    setInventoryFilter("all");
     setSortBy("default");
   };
 
   return (
     <div className="py-12">
       <div className="container">
+        {/* Header Title & Intro */}
         <div className="text-center">
           <p className="text-xs font-medium uppercase tracking-[0.3em] text-primary">Our Collection</p>
-          <h1 className="mt-3 font-serif text-3xl font-bold text-foreground md:text-5xl">Shop</h1>
+          <h1 className="mt-3 font-serif text-3xl font-bold text-foreground md:text-5xl">Shop Handcrafted Heritage</h1>
           <p className="mx-auto mt-4 max-w-lg text-muted-foreground">
-            Each piece is a unique work of art, handcrafted with centuries-old techniques by the Sindhe family.
+            Explore authentic Tholu Bommalata shadow puppets, perforated leather lamps, and grand traditional paintings.
           </p>
         </div>
 
+        {/* Global Search Bar */}
+        <div className="mt-8 mx-auto max-w-xl">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search by craft name, size (e.g. 8&quot;, 12&quot;), deity, epic story, or material..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10 h-11 text-sm bg-card border-border/80 rounded-full shadow-sm focus-visible:ring-primary"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Category tabs */}
-        <div className="mt-10 flex flex-wrap justify-center gap-2">
+        <div className="mt-8 flex flex-wrap justify-center gap-2">
           <Button
             variant={activeCategory === "all" ? "default" : "outline"}
             size="sm"
             onClick={() => handleCategoryChange("all")}
+            className="rounded-full px-4"
           >
-            All
+            All Categories
           </Button>
-          {(dbCategories ? dbCategories.map(c => ({ value: c.slug, label: c.name })) : categories).map((cat) => (
+          {(dbCategories ? dbCategories.map((c) => ({ value: c.slug, label: c.name })) : categories).map((cat) => (
             <Button
               key={cat.value}
               variant={activeCategory === cat.value ? "default" : "outline"}
               size="sm"
               onClick={() => handleCategoryChange(cat.value)}
+              className="rounded-full px-4"
             >
               {cat.label}
             </Button>
@@ -119,100 +282,244 @@ const Shop = () => {
         </div>
 
         {/* Filter toggle + sort bar */}
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-y py-3.5 bg-muted/20 px-3 rounded-lg">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
-              variant="outline"
+              variant={showFilters || hasActiveFilters ? "default" : "outline"}
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
               className="gap-2"
             >
               <SlidersHorizontal className="h-4 w-4" />
-              Filters
+              <span>Filters</span>
               {hasActiveFilters && (
-                <Badge variant="default" className="ml-1 h-5 w-5 rounded-full p-0 text-[10px]">!</Badge>
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] bg-background text-foreground font-bold">
+                  Active
+                </Badge>
               )}
             </Button>
+
             {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-muted-foreground">
-                <X className="h-3 w-3" /> Clear
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="gap-1 text-xs text-muted-foreground hover:text-destructive"
+              >
+                <X className="h-3.5 w-3.5" /> Reset Filters
               </Button>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{filtered.length} products</span>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-44 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {sortOptions.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-foreground">
+              {filtered.length} Product{filtered.length !== 1 ? "s" : ""}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-44 text-sm h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
-        {/* Expanded filter panel */}
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-4 rounded-lg border bg-card p-4"
-          >
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {/* Price range */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-foreground">Price Range</label>
-                <Slider
-                  min={0}
-                  max={maxPrice}
-                  step={500}
-                  value={priceRange}
-                  onValueChange={(v) => setPriceRange(v as [number, number])}
-                  className="mt-2"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{formatPrice(priceRange[0])}</span>
-                  <span>{formatPrice(priceRange[1])}</span>
-                </div>
-              </div>
-
-              {/* Size filter (for lamps) */}
-              {/* Size filter (for all categories) */}
-              <div className="space-y-3 sm:col-span-2">
-                <label className="text-sm font-medium text-foreground">Filter by Size (Preset or Custom)</label>
-                <div className="flex flex-wrap gap-2">
-                  {sizeFilters.map((s) => (
-                    <Button
-                      key={s.value}
-                      variant={sizeFilter === s.value ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSizeFilter(s.value)}
-                    >
-                      {s.label}
-                    </Button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">Or Custom Size:</span>
-                  <Input
-                    placeholder="e.g. 18, 30 x 40"
-                    value={sizeFilters.some(s => s.value === sizeFilter) ? "" : sizeFilter}
-                    onChange={(e) => setSizeFilter(e.target.value || "all")}
-                    className="h-8 max-w-[200px]"
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.div>
+        {/* Active Filters Pill Bar */}
+        {hasActiveFilters && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Applied:</span>
+            {searchQuery && (
+              <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                Search: &ldquo;{searchQuery}&rdquo;
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setSearchQuery("")} />
+              </Badge>
+            )}
+            {activeCategory !== "all" && (
+              <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                Category: {activeCategory}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => handleCategoryChange("all")} />
+              </Badge>
+            )}
+            {sizeFilter !== "all" && (
+              <Badge variant="default" className="gap-1 text-xs font-semibold bg-amber-500 text-black hover:bg-amber-600">
+                Size: {sizeFilter}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setSizeFilter("all")} />
+              </Badge>
+            )}
+            {inventoryFilter !== "all" && (
+              <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                Status: {inventoryFilter}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setInventoryFilter("all")} />
+              </Badge>
+            )}
+            {(priceRange[0] > 0 || priceRange[1] < maxPrice) && (
+              <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                Price: {formatPrice(priceRange[0])} – {formatPrice(priceRange[1])}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setPriceRange([0, maxPrice])} />
+              </Badge>
+            )}
+          </div>
         )}
 
-        {/* Grid */}
+        {/* Expanded Filter Panel */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 overflow-hidden rounded-xl border bg-card p-5 shadow-sm space-y-6"
+            >
+              <div className="grid gap-6 md:grid-cols-3">
+                {/* 1. Size Filter with Real Product Counts & Smart Matching */}
+                <div className="space-y-3 md:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4 text-amber-500" /> Filter by Product Size (Inches / Diameter)
+                    </label>
+                    {sizeFilter !== "all" && (
+                      <button
+                        type="button"
+                        onClick={() => setSizeFilter("all")}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Reset Size
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Size Preset Buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    {dynamicSizeOptions.map((s) => {
+                      const isActive = sizeFilter === s.value;
+                      return (
+                        <Button
+                          key={s.value}
+                          type="button"
+                          variant={isActive ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setSizeFilter(s.value)}
+                          className={`h-8 text-xs gap-1.5 ${
+                            isActive
+                              ? "bg-amber-500 hover:bg-amber-600 text-black font-bold shadow-sm"
+                              : "hover:border-primary/50"
+                          }`}
+                        >
+                          {isActive && <Check className="h-3 w-3" />}
+                          <span>{s.label}</span>
+                          {s.value !== "all" && (
+                            <span className={`text-[10px] px-1 rounded-full ${isActive ? "bg-black/20 text-black" : "bg-muted text-muted-foreground"}`}>
+                              {s.count}
+                            </span>
+                          )}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Size Ranges & Custom Input */}
+                  <div className="pt-2 flex flex-wrap items-center gap-3 text-xs">
+                    <span className="text-muted-foreground font-medium">Quick Ranges:</span>
+                    <Button
+                      type="button"
+                      variant={sizeFilter === "<10" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 text-xs px-2"
+                      onClick={() => setSizeFilter("<10")}
+                    >
+                      Mini / Small (&lt; 10&quot;)
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={sizeFilter === "10-20" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 text-xs px-2"
+                      onClick={() => setSizeFilter("10-20")}
+                    >
+                      Medium (10&quot; – 20&quot;)
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={sizeFilter === ">20" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 text-xs px-2"
+                      onClick={() => setSizeFilter(">20")}
+                    >
+                      Large / Masterpiece (&gt; 20&quot;)
+                    </Button>
+
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <span className="text-muted-foreground whitespace-nowrap">Custom Size:</span>
+                      <Input
+                        placeholder="e.g. 8, 12, 30x14"
+                        value={dynamicSizeOptions.some((s) => s.value === sizeFilter) || ["<10", "10-20", ">20"].includes(sizeFilter) ? "" : sizeFilter}
+                        onChange={(e) => setSizeFilter(e.target.value || "all")}
+                        className="h-7 w-28 text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Price Range Slider */}
+                <div className="space-y-3 p-3 bg-muted/30 rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-foreground">Price Range</label>
+                    <span className="text-xs font-mono text-muted-foreground">
+                      Max: {formatPrice(maxPrice)}
+                    </span>
+                  </div>
+                  <Slider
+                    min={0}
+                    max={maxPrice}
+                    step={250}
+                    value={priceRange}
+                    onValueChange={(v) => setPriceRange(v as [number, number])}
+                    className="mt-2"
+                  />
+                  <div className="flex justify-between text-xs font-medium text-foreground">
+                    <span>{formatPrice(priceRange[0])}</span>
+                    <span>{formatPrice(priceRange[1])}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Inventory Status Filter */}
+              <div className="pt-3 border-t flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-foreground flex items-center gap-1">
+                  <Tag className="h-3.5 w-3.5 text-primary" /> Availability:
+                </span>
+                {inventoryFilters.map((inv) => (
+                  <Button
+                    key={inv.value}
+                    type="button"
+                    variant={inventoryFilter === inv.value ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs px-2.5 rounded-full"
+                    onClick={() => setInventoryFilter(inv.value)}
+                  >
+                    {inv.label}
+                  </Button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Product Catalog Grid */}
         {isLoading ? (
-          <div className="mt-20 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+          <div className="mt-20 flex flex-col items-center justify-center gap-3">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground animate-pulse">Loading handcrafted artworks...</p>
+          </div>
         ) : (
           <motion.div
             layout
@@ -222,9 +529,9 @@ const Shop = () => {
               <motion.div
                 key={product.id}
                 layout
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05, duration: 0.4 }}
+                transition={{ delay: i * 0.03, duration: 0.3 }}
               >
                 <ProductCard product={product} />
               </motion.div>
@@ -232,8 +539,18 @@ const Shop = () => {
           </motion.div>
         )}
 
+        {/* Empty State */}
         {!isLoading && filtered.length === 0 && (
-          <p className="mt-20 text-center text-muted-foreground">No products match your filters.</p>
+          <div className="mt-16 flex flex-col items-center justify-center p-8 text-center bg-card rounded-xl border border-dashed">
+            <SlidersHorizontal className="h-10 w-10 text-muted-foreground/50 mb-3" />
+            <h3 className="font-serif text-lg font-bold text-foreground">No matching products found</h3>
+            <p className="mt-1 text-sm text-muted-foreground max-w-md">
+              We couldn&apos;t find any items matching your selected size or filter criteria. Try adjusting the size or price range.
+            </p>
+            <Button onClick={clearFilters} className="mt-4 bg-amber-500 hover:bg-amber-600 text-black font-semibold" size="sm">
+              Clear All Filters
+            </Button>
+          </div>
         )}
       </div>
     </div>
