@@ -79,7 +79,9 @@ const ProductDetail = () => {
               productName={product.name}
               isNight={isNight}
               onToggleNight={() => setIsNight(!isNight)}
-              hasNightImage={hasNightImage}
+              hasNightImage={Boolean(product.imagesObj?.night && product.imagesObj?.night !== product.imagesObj?.day)}
+              dayImage={product.imagesObj?.day}
+              nightImage={product.imagesObj?.night}
             />
           </div>
 

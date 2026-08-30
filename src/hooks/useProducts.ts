@@ -164,27 +164,36 @@ export const useFeaturedProducts = () => {
 // Helper to convert DB product to standard DisplayProduct format
 export const toDisplayProduct = (p: DbProduct): DisplayProduct => {
   let galleryImages: string[] = [];
+  let extractedNightImage = "";
 
   if (p.image_night) {
     try {
       const parsed = JSON.parse(p.image_night);
       if (Array.isArray(parsed)) {
         galleryImages = parsed.filter((url): url is string => typeof url === "string" && url.trim().length > 0);
+        extractedNightImage = galleryImages.find((u) => u !== p.image_day) || galleryImages[1] || "";
       } else if (typeof parsed === "string") {
         galleryImages = [parsed];
+        extractedNightImage = parsed;
       }
     } catch {
       // If not JSON, it is a regular image URL
-      if (p.image_night.trim() && p.image_night !== p.image_day) {
+      if (p.image_night.trim()) {
         galleryImages = [p.image_night.trim()];
+        if (p.image_night.trim() !== p.image_day?.trim()) {
+          extractedNightImage = p.image_night.trim();
+        }
       }
     }
   }
 
-  // Combine featured image (image_day) and all other gallery images into an ordered unique array
+  // Combine featured image (image_day), night image, and all gallery images into an ordered unique array
   const allImages: string[] = [];
   if (p.image_day && p.image_day.trim()) {
     allImages.push(p.image_day.trim());
+  }
+  if (extractedNightImage && !allImages.includes(extractedNightImage)) {
+    allImages.push(extractedNightImage);
   }
   for (const img of galleryImages) {
     if (img && !allImages.includes(img)) {
@@ -196,6 +205,9 @@ export const toDisplayProduct = (p: DbProduct): DisplayProduct => {
   if (allImages.length === 0) {
     allImages.push("/images/products/big-ganesha.jpg");
   }
+
+  const resolvedDayImage = p.image_day?.trim() || allImages[0];
+  const resolvedNightImage = extractedNightImage || (allImages.length > 1 ? allImages[1] : resolvedDayImage);
 
   return {
     id: p.id,
@@ -209,7 +221,7 @@ export const toDisplayProduct = (p: DbProduct): DisplayProduct => {
     inventoryTag: p.inventory_tag,
     featuredImage: allImages[0],
     images: allImages,
-    imagesObj: { day: p.image_day || allImages[0], night: allImages[1] || p.image_day || allImages[0] },
+    imagesObj: { day: resolvedDayImage, night: resolvedNightImage },
     dimensions: p.dimensions || undefined,
     material: p.material,
     featured: p.featured,

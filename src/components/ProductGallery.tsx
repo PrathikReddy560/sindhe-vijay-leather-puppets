@@ -20,6 +20,8 @@ interface ProductGalleryProps {
   isNight?: boolean;
   onToggleNight?: () => void;
   hasNightImage?: boolean;
+  dayImage?: string;
+  nightImage?: string;
 }
 
 export const ProductGallery: React.FC<ProductGalleryProps> = ({
@@ -28,6 +30,8 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
   isNight = false,
   onToggleNight,
   hasNightImage = false,
+  dayImage,
+  nightImage,
 }) => {
   // Guard against empty image array
   const galleryImages = images && images.length > 0 ? images : ["/images/products/big-ganesha.jpg"];
@@ -223,7 +227,9 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
     touchStateRef.current.initialDistance = 0;
   };
 
-  const currentImageUrl = galleryImages[currentIndex] || galleryImages[0];
+  const currentImageUrl = isNight
+    ? (nightImage || galleryImages[1] || galleryImages[0])
+    : (galleryImages[currentIndex] || dayImage || galleryImages[0]);
 
   return (
     <div className="space-y-4">

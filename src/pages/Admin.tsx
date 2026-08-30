@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, Upload, Shield, Loader2, Package, MessageCircle, Mail, Image, Video, BookOpen, Calendar, Award, GraduationCap, Star, Users, CheckCircle2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Shield, Loader2, Package, MessageCircle, Mail, Image, Video, BookOpen, Calendar, Award, GraduationCap, Star, Users, CheckCircle2, Sun, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/context/AuthContext";
@@ -79,9 +79,13 @@ const Admin = () => {
   const [deleteCatDialogOpen, setDeleteCatDialogOpen] = useState(false);
   const [deletingCat, setDeletingCat] = useState(false);
 
-  // Product images & gallery state
+  // Product images & gallery state (including Day & Night images)
   const [productImages, setProductImages] = useState<string[]>([]);
   const [featuredImage, setFeaturedImage] = useState<string>("");
+  const [dayImage, setDayImage] = useState<string>("");
+  const [nightImage, setNightImage] = useState<string>("");
+  const [uploadingDayImg, setUploadingDayImg] = useState(false);
+  const [uploadingNightImg, setUploadingNightImg] = useState(false);
 
   const getCategoryLabel = (slug: string) => {
     const found = dbCategories?.find((c: any) => c.slug === slug);
@@ -945,20 +949,31 @@ const Admin = () => {
     );
   }
 
-  const uploadImage = async (file: File, type: "day" | "night") => {
-    const setter = type === "day" ? setUploadingDay : setUploadingNight;
+  const handleUploadSingleDayNight = async (file: File, type: "day" | "night") => {
+    const setter = type === "day" ? setUploadingDayImg : setUploadingNightImg;
     setter(true);
     try {
-      const ext = file.name.split(".").pop();
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from("product-images").upload(path, file);
-      if (error) throw error;
+      const ext = file.name.split(".").pop() || "jpg";
+      const cleanName = file.name.substring(0, file.name.lastIndexOf(".")).replace(/[^a-zA-Z0-9]/g, "_").slice(0, 20);
+      const path = `products/${Date.now()}_${type}_${cleanName}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("product-images").upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type || "application/octet-stream",
+      });
+      if (uploadError) throw uploadError;
+
       const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
-      setEditingProduct((prev) => ({
-        ...prev,
-        [type === "day" ? "image_day" : "image_night"]: publicUrl,
-      }));
-      toast({ title: `${type === "day" ? "Day" : "Night"} image uploaded` });
+      if (publicUrl) {
+        if (type === "day") {
+          setDayImage(publicUrl);
+          setFeaturedImage(publicUrl);
+        } else {
+          setNightImage(publicUrl);
+        }
+        setProductImages((prev) => (prev.includes(publicUrl) ? prev : [publicUrl, ...prev]));
+        toast({ title: `${type === "day" ? "Day View" : "Night View"} image uploaded` });
+      }
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
@@ -975,7 +990,7 @@ const Admin = () => {
       return;
     }
 
-    if (productImages.length === 0) {
+    if (productImages.length === 0 && !dayImage) {
       toast({ title: "Image required", description: "Please upload or provide at least one product image.", variant: "destructive" });
       return;
     }
@@ -995,9 +1010,16 @@ const Admin = () => {
 
     setSaving(true);
     try {
-      const mainImage = featuredImage && productImages.includes(featuredImage) ? featuredImage : productImages[0];
-      // Save all images ordered: featured image first, followed by remaining gallery images
-      const reorderedGallery = [mainImage, ...productImages.filter((img) => img !== mainImage)];
+      const mainDayImage = dayImage || featuredImage || productImages[0];
+      const mainNightImage = nightImage || (productImages.length > 1 && productImages[1] !== mainDayImage ? productImages[1] : null);
+
+      // Reorder gallery to have Day image first, Night image second (if present), then remaining
+      const otherImages = productImages.filter((img) => img !== mainDayImage && img !== mainNightImage);
+      const reorderedGallery = [
+        mainDayImage,
+        ...(mainNightImage ? [mainNightImage] : []),
+        ...otherImages,
+      ].filter(Boolean);
 
       const payload = {
         slug: cleanSlug,
@@ -1008,8 +1030,8 @@ const Admin = () => {
         discount_price: editingProduct.discount_price ? editingProduct.discount_price : null,
         category: editingProduct.category,
         inventory_tag: editingProduct.inventory_tag,
-        image_day: mainImage,
-        image_night: reorderedGallery.length > 1 ? JSON.stringify(reorderedGallery) : (reorderedGallery[0] || null),
+        image_day: mainDayImage,
+        image_night: mainNightImage || (reorderedGallery.length > 1 ? JSON.stringify(reorderedGallery) : null),
         dimensions: editingProduct.dimensions?.trim() || null,
         material: editingProduct.material.trim(),
         featured: editingProduct.featured,
@@ -1029,6 +1051,8 @@ const Admin = () => {
       setEditingProduct(emptyProduct);
       setProductImages([]);
       setFeaturedImage("");
+      setDayImage("");
+      setNightImage("");
     } catch (err: any) {
       toast({ title: "Error saving product", description: err.message, variant: "destructive" });
     } finally {
@@ -1049,17 +1073,22 @@ const Admin = () => {
   const openEdit = (p: DbProduct) => {
     // Parse multi-image gallery
     let gallery: string[] = [];
+    let detectedNightImg = "";
+
     if (p.image_night) {
       try {
         const parsed = JSON.parse(p.image_night);
         if (Array.isArray(parsed)) {
           gallery = parsed.filter((url): url is string => typeof url === "string" && url.trim().length > 0);
+          detectedNightImg = gallery.find((url) => url !== p.image_day) || "";
         } else if (typeof parsed === "string") {
           gallery = [parsed];
+          detectedNightImg = parsed;
         }
       } catch {
         if (p.image_night !== p.image_day) {
           gallery = [p.image_night];
+          detectedNightImg = p.image_night;
         }
       }
     }
@@ -1085,6 +1114,8 @@ const Admin = () => {
 
     setProductImages(allImages);
     setFeaturedImage(p.image_day || allImages[0] || "");
+    setDayImage(p.image_day || allImages[0] || "");
+    setNightImage(detectedNightImg || (allImages.length > 1 ? allImages[1] : ""));
     setDialogOpen(true);
   };
 
@@ -1092,6 +1123,8 @@ const Admin = () => {
     setEditingProduct(emptyProduct);
     setProductImages([]);
     setFeaturedImage("");
+    setDayImage("");
+    setNightImage("");
     setDialogOpen(true);
   };
 
@@ -1240,13 +1273,148 @@ const Admin = () => {
                     </div>
                   </div>
 
-                  {/* Multi-Image Upload & Management */}
-                  <div className="pt-2 border-t">
+                  {/* Day & Night Views Spotlight */}
+                  <div className="pt-3 border-t space-y-3">
+                    <div>
+                      <Label className="text-base font-serif font-bold text-foreground">
+                        Day & Night Product Views
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Traditional leather puppets & lamps have unlit (Day) and backlit/illuminated (Night) states.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Day View Box */}
+                      <div className="p-3 rounded-lg border bg-card space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+                            <Sun className="h-3.5 w-3.5 fill-current" /> ☀️ Day View (Natural)
+                          </span>
+                          {dayImage && <Badge variant="outline" className="text-[10px] text-green-600">Active</Badge>}
+                        </div>
+
+                        <div className="aspect-[4/3] rounded-md overflow-hidden bg-muted/40 border relative flex items-center justify-center">
+                          {dayImage ? (
+                            <img src={dayImage} alt="Day View" className="w-full h-full object-contain p-1" />
+                          ) : (
+                            <div className="text-center p-3 text-xs text-muted-foreground">
+                              <Sun className="h-6 w-6 mx-auto mb-1 text-amber-500 opacity-60" />
+                              <span>No Day Image set</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <label className="flex-1 cursor-pointer">
+                            <input
+                              type="file"
+                              accept="*/*"
+                              className="hidden"
+                              onChange={(e) => e.target.files?.[0] && handleUploadSingleDayNight(e.target.files[0], "day")}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-xs h-7 gap-1"
+                              disabled={uploadingDayImg}
+                              asChild
+                            >
+                              <span>
+                                {uploadingDayImg ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                                Upload Day Image
+                              </span>
+                            </Button>
+                          </label>
+                          {dayImage && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs text-destructive hover:bg-destructive/10 px-2"
+                              onClick={() => setDayImage("")}
+                            >
+                              Clear
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Night View Box */}
+                      <div className="p-3 rounded-lg border bg-black/90 text-white space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                            <Moon className="h-3.5 w-3.5 fill-current text-indigo-400" /> 🌙 Night View (Illuminated)
+                          </span>
+                          {nightImage && <Badge className="bg-indigo-600 text-white text-[10px]">Active</Badge>}
+                        </div>
+
+                        <div className="aspect-[4/3] rounded-md overflow-hidden bg-black border border-white/10 relative flex items-center justify-center">
+                          {nightImage ? (
+                            <img
+                              src={nightImage}
+                              alt="Night View"
+                              className="w-full h-full object-contain p-1 drop-shadow-[0_0_15px_rgba(251,191,36,0.4)]"
+                            />
+                          ) : (
+                            <div className="text-center p-3 text-xs text-white/50">
+                              <Moon className="h-6 w-6 mx-auto mb-1 text-indigo-400 opacity-60" />
+                              <span>No Night/Illuminated Image set</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <label className="flex-1 cursor-pointer">
+                            <input
+                              type="file"
+                              accept="*/*"
+                              className="hidden"
+                              onChange={(e) => e.target.files?.[0] && handleUploadSingleDayNight(e.target.files[0], "night")}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-xs h-7 gap-1 bg-white/10 text-white border-white/20 hover:bg-white/20"
+                              disabled={uploadingNightImg}
+                              asChild
+                            >
+                              <span>
+                                {uploadingNightImg ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                                Upload Night Image
+                              </span>
+                            </Button>
+                          </label>
+                          {nightImage && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs text-red-400 hover:bg-red-500/20 px-2"
+                              onClick={() => setNightImage("")}
+                            >
+                              Clear
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Multi-Image & File Gallery Upload Manager */}
+                  <div className="pt-3 border-t">
                     <ImageUploadManager
+                      title="All Product Media & File Gallery"
                       images={productImages}
                       onChange={setProductImages}
                       featuredImage={featuredImage}
                       onFeaturedChange={setFeaturedImage}
+                      dayImage={dayImage}
+                      onDayImageChange={setDayImage}
+                      nightImage={nightImage}
+                      onNightImageChange={setNightImage}
                     />
                   </div>
 
@@ -1548,7 +1716,7 @@ const Admin = () => {
                       <label className="flex-1 cursor-pointer">
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="*/*"
                           className="hidden"
                           onChange={(e) => e.target.files?.[0] && handleUploadSlide(e.target.files[0])}
                           disabled={uploadingSlide}
@@ -1685,7 +1853,7 @@ const Admin = () => {
                     <label className="cursor-pointer">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="*/*"
                         className="hidden"
                         onChange={(e) => e.target.files?.[0] && handleUploadCategoryImg(e.target.files[0])}
                       />
@@ -1848,7 +2016,7 @@ const Admin = () => {
                       <label className="cursor-pointer">
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="*/*"
                           className="hidden"
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
@@ -2061,7 +2229,7 @@ const Admin = () => {
                     <label className="cursor-pointer">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="*/*"
                         className="hidden"
                         onChange={(e) => e.target.files?.[0] && handleUploadStoryImg(e.target.files[0])}
                       />
@@ -2181,7 +2349,7 @@ const Admin = () => {
                     <label className="cursor-pointer">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="*/*"
                         className="hidden"
                         onChange={(e) => e.target.files?.[0] && handleUploadEventImg(e.target.files[0])}
                       />
@@ -2282,7 +2450,7 @@ const Admin = () => {
                     <label className="cursor-pointer">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="*/*"
                         className="hidden"
                         onChange={(e) => e.target.files?.[0] && handleUploadAchImg(e.target.files[0])}
                       />
